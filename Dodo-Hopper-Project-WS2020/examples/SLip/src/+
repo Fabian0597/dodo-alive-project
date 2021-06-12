@@ -1,0 +1,170 @@
+/*====================================================================
+   dynamics.cc
+   Dennis Ossadnik 2020
+*///=================================================================
+
+
+#include <string>
+#include <iostream>
+#include <stdio.h> 
+#include <rbdl/rbdl.h>
+#include <rbdl/addons/luamodel/luamodel.h>
+#include <rbdl/addons/geometry/geometry.h>
+
+#include "csvtools.h"
+#include "arkodeInterface.h"
+#include "slip.h"
+#include "articulatedLeg.h"
+
+using namespace RigidBodyDynamics;
+using namespace RigidBodyDynamics::Math;
+
+RigidBodyDynamics::Model model;
+
+bool applyForce = false;
+
+int flightPhase(realtype t, N_Vector y, N_Vector ydot, void *user_data);
+int standPhase(realtype t, N_Vector y, N_Vector ydot, void *user_data);
+
+
+int main (int argc, char* argv[]) {
+    //Init RBDL
+    //
+    std::cout << "START dynamics" << std::endl;
+    double legLenght = 1.0;
+
+    rbdl_check_api_version (RBDL_API_VERSION);
+
+    std::string fileName("../model/articulatedLeg.lua");
+
+    if (!Addons::LuaModelReadFromFile(fileName.c_str(),&model)){
+        std::cerr << "Error loading LuaModel: " << fileName << std::endl;
+        abort();
+    }
+
+    //Init solver
+    VectorNd x = VectorNd::Zero(2*model.dof_count);
+    std::cout  << "x len:" << x.size() << std::endl;
+    //x << 20.0 * M_PI/180.0, 20.0 * M_PI/180.0, 0.0 ,0.0;    //Initial condition
+    x[1] = 2;
+    realtype t = 0.;                                         //Initial time
+    realtype dt = 0.01;                                     //Time step
+
+    arkodeInterface solverFlightPhase(flightPhase, x);
+    arkodeInterface solverStandPhase(standPhase, x);
+
+
+
+    //Init containers
+    std::vector<std::vector< double > > matrixData;
+    std::vector< double > rowData(model.dof_count+1); //Erster Eintrag für Zeit
+
+    rowData[0] = t;
+    for(unsigned int z=0; z < model.dof_count; z++){
+        rowData[z+1] = x[z];
+    }
+
+    matrixData.push_back(rowData);
+
+    //Integration loop
+    for(int i = 0; i<50; i++) {
+
+        t += dt;
+        std::cout << "New---------------" << std::endl;
+        std::cout << x << std::endl;
+        if(false){
+            VectorNd x_new = solverStandPhase.integrate(x, dt);
+            x = x_new;
+        }
+        else{
+            VectorNd x_new = solverFlightPhase.integrate(x, dt);
+            x = x_new;
+        }
+        if(t > 5.0) {
+            applyForce = true;
+        }
+
+        rowData[0] = t;
+        for(unsigned int z=0; z < model.dof_count; z++){
+            rowData[z+1] = x[z];
+        }
+
+        matrixData.push_back(rowData);
+    }
+
+
+    std::string emptyHeader("");
+    std::string fileNameOut("../output/animation.csv");
+    printMatrixToFile(matrixData,emptyHeader,fileNameOut);
+    printf("Wrote: ../output/animation.csv (meshup animation file)\n");
+
+
+    return 0;
+
+}
+
+
+int flightPhase(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
+    // y    =  [q1, q2, qd1, qd2]
+    // ydot =  [qd1, qd2, qdd1, qdd2]
+    using Eigen::Map;
+    std::cout << "FLIGHT" << std::endl;
+    VectorNd q = VectorNd::Zero(model.dof_count);
+    VectorNd qd = VectorNd::Zero(model.dof_count);
+    VectorNd qdd = VectorNd::Zero(model.dof_count);
+    VectorNd tau = VectorNd::Zero(model.dof_count);
+
+    q  = Map<VectorNd>(NV_DATA_S(y),                  model.dof_count);
+    qd = Map<VectorNd>(NV_DATA_S(y)+ model.dof_count, model.dof_count);
+
+        MatrixNd J = MatrixNd::Zero(3, model.dof_count);
+        std::cout << "J: "<< J << std::endl;
+        CalcPointJacobian(model, q, model.GetBodyId("foot"), Vector3dZero, J, true);
+
+        VectorNd F = VectorNd::Zero(3); F << 10.0, 0.0, 0.0;
+
+        tau = J.transpose() * F;
+
+
+    ForwardDynamics(model, q, qd, tau, qdd);
+
+    VectorNd res = VectorNd::Zero(2*model.dof_count);
+
+    res.head(model.dof_count) = qd;
+    res.tail(model.dof_count) = qdd;
+
+    for(int i = 0; i<2*model.dof_count; i++) {
+        NV_Ith_S(ydot, i) = res[i];
+    }
+
+}
+int standPhase(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
+    // y    =  [q1, q2, qd1, qd2]
+    // ydot =  [qd1, qd2, qdd1, qdd2]
+    std::cout << "HALEJULIA###############" << std::endl; 
+    using Eigen::Map;
+
+    VectorNd q = VectorNd::Zero(model.dof_count);
+    VectorNd qd = VectorNd::Zero(model.dof_count);
+    VectorNd qdd = VectorNd::Zero(model.dof_count);
+    VectorNd tau = VectorNd::Zero(model.dof_count);
+
+    q  = Map<VectorNd>(NV_DATA_S(y),                  model.dof_count);
+    qd = Map<VectorNd>(NV_DATA_S(y)+ model.dof_count, model.dof_count);
+
+
+
+    ForwardDynamics(model, q, qd, tau, qdd);
+    double k = 70.0;
+    double mass = 1;
+    qdd[1] += k*(1-q[1]);
+    VectorNd res = VectorNd::Zero(2*model.dof_count);
+
+    res.head(model.dof_count) = qd;
+    res.tail(model.dof_count) = qdd;
+
+    for(int i = 0; i<2*model.dof_count; i++) {
+        NV_Ith_S(ydot, i) = res[i];
+    }
+
+}

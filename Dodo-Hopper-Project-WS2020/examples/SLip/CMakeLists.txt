@@ -1,0 +1,86 @@
+CMAKE_MINIMUM_REQUIRED ( VERSION 2.8 )
+
+PROJECT( "articulatedLeg" CXX C )
+
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+
+SET(CUSTOM_RBDL_PATH "" CACHE PATH "Path to specific RBDL Installation")
+
+LIST( APPEND CMAKE_MODULE_PATH
+  ${PROJECT_SOURCE_DIR}/CMake
+  ${PROJECT_SOURCE_DIR}/CMake/Modules)
+
+SET(TARGETS
+  dynamics
+  CACHE STRING
+  "Target to build"
+)
+
+SET_TARGET_PROPERTIES ( ${PROJECT_EXECUTABLE} PROPERTIES
+  LINKER_LANGUAGE CXX
+)
+
+find_package(Boost 1.65.1 REQUIRED COMPONENTS log)
+FIND_PACKAGE(Threads)
+FIND_PACKAGE (RBDL COMPONENTS LUAMODEL REQUIRED)
+FIND_PACKAGE (Lua51 REQUIRED)
+FIND_PACKAGE (Eigen3 3.0.0 )
+FIND_PACKAGE (SUNDIALS)
+
+
+SET(BOOST_INC_DIR
+  /usr/include
+  CACHE STRING
+  "Location of the BOOST header files")
+
+
+INCLUDE_DIRECTORIES ( 
+  ${BOOST_INC_DIR} 
+  ${RBDL_INCLUDE_DIR} 
+  ${EIGEN3_INCLUDE_DIR} 
+  ${LUA_INCLUDE_DIR}  
+  ${RBDL_GEOMETRY_INCLUDE_DIR}
+  ${SUNDIALS_INC_DIR}
+  ${PROJECT_SOURCE_DIR}/include
+)
+
+
+LIST(REMOVE_DUPLICATES TARGETS)
+
+ADD_LIBRARY(arkodeInterface src/arkodeInterface.cc src/arkodeInterface.h)
+ADD_LIBRARY(slip src/slip.cc src/slip.h)
+ADD_LIBRARY(articulatedLeg src/articulatedLeg.cc src/articulatedLeg.h)
+TARGET_LINK_LIBRARIES (
+  articulatedLeg
+  arkodeInterface
+  slip
+  ${RBDL_LIBRARY}
+  ${RBDL_LUAMODEL_LIBRARY}
+  ${LUA_LIBRARIES}
+  ${RBDL_GEOMETRY_LIBRARY}
+  ${SUNDIALS_LIBRARIES}
+  ${Boost_LOG_LIBRARY}
+  ${CMAKE_THREAD_LIBS_INIT}
+  )
+
+ADD_EXECUTABLE(${TARGETS}
+  src/${TARGETS}.cc
+  src/csvtools.h
+  src/csvtools.cc
+)
+
+TARGET_LINK_LIBRARIES (
+  ${TARGETS}
+  ${RBDL_LIBRARY}
+  ${RBDL_LUAMODEL_LIBRARY}
+  ${LUA_LIBRARIES}
+  ${RBDL_GEOMETRY_LIBRARY}
+  ${SUNDIALS_LIBRARIES}
+  arkodeInterface
+  slip
+  articulatedLeg
+  )
+
+
+
+
