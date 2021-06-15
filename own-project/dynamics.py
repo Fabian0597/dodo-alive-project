@@ -7,7 +7,11 @@ import rbdl
 from articulated_leg_walker import WalkerState
 
 
-class DynamicsState: # TODO rename
+def calc_numerical_gradient(x_new, x_old, step_size):
+    return (x_new - x_old) / step_size
+
+
+class MathModel:
 
     def __init__(self, model, walker_state: WalkerState, timestep):
         self.state = WalkerState()
@@ -15,13 +19,13 @@ class DynamicsState: # TODO rename
 
         self.model = model
         self.robot_mass = None
-        self.jac_cog = None # jacobianCog
-        self.jac_d_cog = None # derivative of jacobian
+        self.jac_cog = None  # jacobianCog
+        self.jac_d_cog = None  # derivative of jacobian
         self.jac_s = None
         self.jac_base_s = None
         self.jac_s_dot = None
         self.jac_star = None
-        self.center_of_mass = None #actualCom
+        self.center_of_mass = None  # actualCom
         self.leg_length = None
         self.leg_angle = None
         self.nullspace_s = None
@@ -105,19 +109,20 @@ class DynamicsState: # TODO rename
 
         pre_jac_s = self.jac_s
 
-        rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base, True)
+        rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base,
+                               True)
         rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3), jac_foot, True)
         self.jac_base_s = jac_foot - jac_base
         self.jac_s = jac_foot
-        self.jac_s_dot = self.calc_numerical_gradient(self.jac_s, pre_jac_s, self.timestep)
-
+        self.jac_s_dot = calc_numerical_gradient(self.jac_s, pre_jac_s, self.timestep)
 
     def jacobian_star_update(self):
         """
         update the nullspace_s in Hutter paper (8)
         """
         actuation_matrix_nullspace_s = self.selection_matrix * self.nullspace_s
-        self.jac_star = self.jac_cog * inv(self.mass_matrix) * actuation_matrix_nullspace_s.transpose() * inv(actuation_matrix_nullspace_s*inv(self.mass_matrix)*actuation_matrix_nullspace_s.transpose())
+        self.jac_star = self.jac_cog * inv(self.mass_matrix) * actuation_matrix_nullspace_s.transpose() * inv(
+            actuation_matrix_nullspace_s * inv(self.mass_matrix) * actuation_matrix_nullspace_s.transpose())
 
     def nullspace_s_update(self):
         """
@@ -137,33 +142,33 @@ class DynamicsState: # TODO rename
         """
         update the inertia matrix star Hutter paper (9)
         """
-        #TODO: what is the normal J equal to Jcog like in C++ implementation?
+        # TODO: what is the normal J equal to Jcog like in C++ implementation?
         actuation_matrix_nullspace_s = self.selection_matrix * self.nullspace_s
-        self.lambda_star = inv(self.jac_cog*inv(self.mass_matrix)*actuation_matrix_nullspace_s*self.jac_star)
-    
+        self.lambda_star = inv(self.jac_cog * inv(self.mass_matrix) * actuation_matrix_nullspace_s * self.jac_star)
+
     def mu_star_update(self):
         """
         update the mue star Hutter paper (10)
         """
-        #TODO self.qd, self.b_vector is still missing
-        mue_star_1 = self.lambda_star * self.jac_cog * inv(self.mass_matrix) * self.nullspace_s.transpose() * self.b_vector
+        # TODO self.qd, self.b_vector is still missing
+        mue_star_1 = self.lambda_star * self.jac_cog * inv(
+            self.mass_matrix) * self.nullspace_s.transpose() * self.b_vector
         mue_star_2 = self.lambda_star * self.jac_d_cog * self.qd
-        mue_star_3 = self.lambda_star*self.jac_cog*inv(self.mass_matrix)*self.jac_s.transpose()*self.lambda_s*self.jac_s_dot*self.qd
-        self.mu_star = mue_star_1-mue_star_2+mue_star_3
+        mue_star_3 = self.lambda_star * self.jac_cog * inv(
+            self.mass_matrix) * self.jac_s.transpose() * self.lambda_s * self.jac_s_dot * self.qd
+        self.mu_star = mue_star_1 - mue_star_2 + mue_star_3
 
     def p_star_update(self):
         """
         update the p star Hutter paper (11)
         """
         self.p_star = self.lambda_star * self.jac_cog * inv(self.mass_matrix) * self.nullspace_s.transpose() * self.g
-    
-
 
     def mass_matrix_update(self):
         """
         Computes the joint space inertia matrix by using the Composite Rigid Body Algorithm
         """
-        rbdl.CompositeRigidBodyAlgorithm(self.model,q,self.mass_matrix,true)
+        rbdl.CompositeRigidBodyAlgorithm(self.model, q, self.mass_matrix, true)
 
     def b_vector_update(self):
         """
@@ -172,14 +177,13 @@ class DynamicsState: # TODO rename
             velocities, and accelerations. Computes inverse dynamics with the Newton-Euler Algorithm
         NonlinearEffects: Computes the coriolis forces
         """
-       #rbdl.InverseDynamics(self.model, q, qd, )
-       #rbdl.NonlinearEffects(self.model, )
+        # rbdl.InverseDynamics(self.model, q, qd, )
+        # rbdl.NonlinearEffects(self.model, )
         pass
-    #def com_vel(self):
+
+    # def com_vel(self):
     #    jac = self.jac_cog()
     #    return jac @ self.qd
 
-
     def update(self):
         pass
-        
