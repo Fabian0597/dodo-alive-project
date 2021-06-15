@@ -34,15 +34,20 @@ class MathModel:
         self.mu_star = None
         self.p_star = None
         self.mass_matrix = None
+        self.mass_matrix_ee = None
         self.b_vector = None
-        self.selection_matrix = np.array([[0,0,1,0],[0,0,0,1]])
-        self.g = np.array([0,9.81]).transpose()
+        self.selection_matrix = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
+        self.g = np.array([0, 9.81]).transpose()
 
+        # flight_phase TODO necessary to be in model
+        self.leg_spring_delta = None  # = springLegDelta
+        self.leg_length_delta = 0  # = deltaLegLength TODO what is the difference
 
+        self.vel_com = None  # velocity of the center of gravity
 
-    def calc_numerical_gradient(self, x_new, x_old, step_size):
-        return (x_new - x_old) /step_size
-
+        self.vel_com_start_stance = None
+        self.angle_of_attack = None  # in deg
+        self.impact = None
 
     def center_of_gravity_update(self):
         """
