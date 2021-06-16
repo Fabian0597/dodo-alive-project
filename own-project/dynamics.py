@@ -158,9 +158,9 @@ class MathModel:
         # TODO self.qd, self.b_vector is still missing
         mue_star_1 = self.lambda_star * self.jac_cog * inv(
             self.mass_matrix) * self.nullspace_s.transpose() * self.b_vector
-        mue_star_2 = self.lambda_star * self.jac_d_cog * self.qd
+        mue_star_2 = self.lambda_star * self.jac_d_cog * self.state.qd
         mue_star_3 = self.lambda_star * self.jac_cog * inv(
-            self.mass_matrix) * self.jac_s.transpose() * self.lambda_s * self.jac_s_dot * self.qd
+            self.mass_matrix) * self.jac_s.transpose() * self.lambda_s * self.jac_s_dot * self.state.qd
         self.mu_star = mue_star_1 - mue_star_2 + mue_star_3
 
     def p_star_update(self):
@@ -173,7 +173,7 @@ class MathModel:
         """
         Computes the joint space inertia matrix by using the Composite Rigid Body Algorithm
         """
-        rbdl.CompositeRigidBodyAlgorithm(self.model, q, self.mass_matrix, true)
+        rbdl.CompositeRigidBodyAlgorithm(self.model, self.state.q, self.mass_matrix, True)
 
     def b_vector_update(self):
         """
@@ -182,8 +182,7 @@ class MathModel:
             velocities, and accelerations. Computes inverse dynamics with the Newton-Euler Algorithm
         NonlinearEffects: Computes the coriolis forces
         """
-        # rbdl.InverseDynamics(self.model, q, qd, )
-        # rbdl.NonlinearEffects(self.model, )
+        rbdl.NonlinearEffects(self.model, self.state.q, self.state.qd, self.b_vector)
         pass
 
     # def com_vel(self):
