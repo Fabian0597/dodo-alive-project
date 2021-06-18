@@ -25,7 +25,7 @@ class MathModel:
         self.jac_base_s = None
         self.jac_s_dot = None
         self.jac_star = None
-        self.center_of_mass = None  # actualCom
+        self.pos_com = None  # actualCom
         self.leg_length = None
         self.leg_angle = None
         self.nullspace_s = None
@@ -69,7 +69,7 @@ class MathModel:
             cog_mass_weighted += cog_in_world * self.model.mBodies[i].mMass
             mass_sum = mass_sum + self.model.mBodies[i].mMass
 
-        self.center_of_mass = cog_mass_weighted / mass_sum
+        self.pos_com = cog_mass_weighted / mass_sum
 
     def current_leg_length_update(self):
         """
@@ -77,7 +77,7 @@ class MathModel:
         """
         foot_id = self.model.GetBodyId("foot")
         pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3), True)
-        self.leg_length = np.linalg.norm(self.center_of_mass - pos_foot, ord=2)
+        self.leg_length = np.linalg.norm(self.pos_com - pos_foot, ord=2)
 
     def current_leg_angle_update(self):
         """
@@ -85,8 +85,8 @@ class MathModel:
         """
         foot_id = self.model.GetBodyId("foot")
         pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3), True)
-        dx = pos_foot[0] - self.center_of_mass[0]
-        dy = pos_foot[1] - self.center_of_mass[1]
+        dx = pos_foot[0] - self.pos_com[0]
+        dy = pos_foot[1] - self.pos_com[1]
         self.leg_angle = math.degrees(math.atan2(abs(dx), abs(dy)))
 
     def jacobian_cog_update(self):

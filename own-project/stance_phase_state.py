@@ -18,7 +18,7 @@ class StancePhaseState(State):
         """
 
         if not math_model.impact:  # impact of the foot / start of stance phase
-            math_model.impact_com = math_model.center_of_mass
+            math_model.impact_com = math_model.pos_com
             math_model.impact = True
             math_model.first_iteration_after_impact = True
             math_model.vel_com_start_stance = math_model.vel_com

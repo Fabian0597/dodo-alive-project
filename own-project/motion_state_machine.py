@@ -40,7 +40,7 @@ class MotionStateMachine:
             next_state = "Flight"
         elif math_model.leg_spring_delta < 0 and math_model.vel_com[1] > 0:
             next_state = "Flight"
-            math_model.impact_com = math_model.center_of_mass
+            math_model.impact_com = math_model.pos_com
             math_model.update()
         else:
             next_state = "Stance"
