@@ -1,6 +1,7 @@
+import numpy as np
 import rbdl
 
-from dynamics import MathModel
+from math_model import MathModel
 from flight_phase_state import FlightPhaseState
 from stance_phase_state import StancePhaseState
 
@@ -39,9 +40,10 @@ class MotionStateMachine:
             next_state = "Flight"
         elif math_model.leg_spring_delta < 0 and math_model.vel_com[1] > 0:
             next_state = "Flight"
-            # TODO impactCom = actualCom; updateCalculation()
+            math_model.impact_com = math_model.center_of_mass
+            math_model.update()
         else:
-            next_state = "Flight"
+            next_state = "Stance"
         self.active_state = self.states(next_state)
 
     def run_solver_for_active_state(self, math_model: MathModel):

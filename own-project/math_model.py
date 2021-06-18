@@ -4,7 +4,7 @@ import numpy as np
 from numpy.linalg import inv
 import rbdl
 
-from articulated_leg_walker import WalkerState
+from articulated_leg_walker import WalkerState, State
 
 
 def calc_numerical_gradient(x_new, x_old, step_size):
@@ -14,7 +14,7 @@ def calc_numerical_gradient(x_new, x_old, step_size):
 class MathModel:
 
     def __init__(self, model, walker_state: WalkerState, timestep):
-        self.state = WalkerState()
+        self.state = State()
         self.timestep = timestep
 
         self.model = model
@@ -45,16 +45,23 @@ class MathModel:
 
         self.vel_com = None  # velocity of the center of gravity
 
-        self.vel_com_start_stance = None
+        self.vel_com_start_stance = np.zeros((2, 1))  # velocity at start of stance / when the impact happens
         self.angle_of_attack = None  # in deg
+
+        # necessary
         self.impact = None
+        self.first_iteration_after_impact = True
+        self.spring_stiffness = 6900
+
+        # TODO: what is this for?
+        self.impact_com = None
 
     def center_of_gravity_update(self):
         """
         Updates the center of gravity/mass
         """
         num_of_joints = len(self.model.mBodies)
-        cog_mass_weighted = np.zeros(3, 1);
+        cog_mass_weighted = np.zeros((3, 1))
         mass_sum = 0
         for i in range(num_of_joints):
             cog_in_body = self.model.mBodies[i].mCenterOfMass

@@ -3,7 +3,7 @@ import math
 import numpy as np
 import rbdl
 
-from dynamics import MathModel, calc_numerical_gradient
+from math_model import MathModel, calc_numerical_gradient
 from motion_state_machine import State
 
 
@@ -16,7 +16,7 @@ class FlightPhaseState(State):
         self.max_angle_of_attack = 18  # in deg
         # Leg PID Controller
         self.i_max_control = 0.5
-        self.integral_pos_error = np.zeros(2)
+        self.integral_pos_error = np.zeros((2, 1))
 
         self.p_vel = 0.4
         self.i_vel_pos = 0.1
@@ -25,11 +25,15 @@ class FlightPhaseState(State):
         self.total_error_vel
         self.set_forces = True
         self.set_forces_glob = False
-        self.first_iteration = True
 
     def run_solver(self, iteration_counter: int, timestep: float, math_model: MathModel):
         """
-        run the solver for this state
+        run the solver for the flight phase state. Calculates the xdd_des (desired acceleration) of the robot.
+        :param iteration_counter: the current iteration number
+        :param timestep: length of a time step / iteration
+        :param math_model: reference to the math model, where all the variables of the mathematical model
+            of the robot are stored
+        :return:
         """
 
         # POSITION CONTROLLER
@@ -50,8 +54,8 @@ class FlightPhaseState(State):
             self.set_forces_glob = True
 
         # FIRST IMPACT
-        if self.first_iteration:
-            self.first_iteration = False
+        if math_model.first_iteration_after_impact:
+            math_model.first_iteration_after_impact = False
             math_model.leg_length_delta = 0
             # VELOCITY CONTROLLER
             vel_com_start_flight = math_model.vel_com
@@ -76,7 +80,7 @@ class FlightPhaseState(State):
         # LEG CONTROLLER
         local_leg_length_spring = 0.9
 
-        pos_foot_des = np.zeros(2)
+        pos_foot_des = np.zeros((2, 1))
         angle_of_attack_rad = math.radians(math_model.angle_of_attack)
         pos_foot_des[0] = math_model.center_of_mass[0] + math.sin(angle_of_attack_rad) * local_leg_length_spring
         pos_foot_des[1] = math_model.center_of_mass[1] - math.cos(angle_of_attack_rad) * local_leg_length_spring
@@ -99,6 +103,6 @@ class FlightPhaseState(State):
         mass_inv = np.linalg.inv(math_model.mass_matrix_ee)
         xdd_des = mass_inv * (self.k_p * pos_error + self.k_d * vel_error + self.k_i * timestep * self.integral_pos_error)
 
-        # TODO updateCalculation()
+        math_model.update()
         # TODO x_new = solverFlightPhase.integrate(xVector, dt);
         math_model.impact = False
