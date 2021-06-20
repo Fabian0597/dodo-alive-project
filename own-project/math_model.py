@@ -38,6 +38,8 @@ class MathModel:
         self.b_vector = None
         self.selection_matrix = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
         self.g = np.array([0, 9.81]).transpose()
+        self.springLegForce = None
+        self.spaceControlForce = None
 
         # flight_phase TODO necessary to be in model
         self.leg_spring_delta = None  # = springLegDelta
@@ -190,11 +192,33 @@ class MathModel:
         NonlinearEffects: Computes the coriolis forces
         """
         rbdl.NonlinearEffects(self.model, self.state.q, self.state.qd, self.b_vector)
-        pass
 
-    # def com_vel(self):
-    #    jac = self.jac_cog()
-    #    return jac @ self.qd
+    def spring_force_update(self):
+        foot_id = self.model.GetBodyId("foot")
+        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model,self.state.q,articulatedLegModel.GetBodyId("foot"), np.zeros(3), True)
+        impactComInFoot = self.impact_com - footInBase
+        actualComInFoot = self.pos_com - footInBase
+        directionVector = actualComInFoot/np.linalg.norm(actualComInFoot)    
+        springLegDelta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length
+        self.springLegForce = self.spring_stiffness * (springLegDelta) * (directionVector)
+
+    def SpaceControlForce(self):
+        self.spaceControlForce = self.lambda_star * (1 / self.robot_mass) * (self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
 
     def update(self):
-        pass
+        self.center_of_gravity_update()
+        self.current_leg_length_update()
+        self.current_leg_angle_update()
+        self.spring_force_update()
+        self.jacobian_s_update()
+        self.mass_matrix_update()
+        self.lambda_s_update()
+        self.nullspace_s_update()
+        self.jacobian_cog_update()
+        self.jacobian_star_update()
+        self.lambda_star_update()
+        self.b_vector_update()
+        self.p_star_update()
+        self.mu_star_update()
+        self.SpaceControlForce()
+

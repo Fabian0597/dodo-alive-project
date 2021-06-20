@@ -82,7 +82,11 @@ class FlightPhaseState(State):
 
         xdd = self.pose_controller(math_model, timestep, angle_of_attack)
 
-        # TODO what to do with xdd ?
+        # TODO what to do with xdd and tau ?
+        tau_flight = self.tau_update(xdd)
+
+        #TODO: update tau in math_model_state here?
+        math_model.state.tau = tau_flight
 
         math_model.update()
         # TODO x_new = solverFlightPhase.integrate(xVector, dt);
@@ -141,3 +145,10 @@ class FlightPhaseState(State):
         vel_des = limit_value_to_max_abs(vel_des, self.max_vel)
         p_error = (cur_vel - vel_des)
         return p_error
+
+    def tau_update(self, xdd):
+        #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
+        # von qr und pinv
+        pinv_jac_base_s = np.linalg.pinv(np.linalg.qr(math_model.jac_base_s))
+        tau = math_model.mass_matrix * pinv * xdd
+        return tau

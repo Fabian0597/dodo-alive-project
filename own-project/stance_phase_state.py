@@ -39,9 +39,17 @@ class StancePhaseState(State):
         # new generalized velocity after impact
         math_model.state.qd = nullspace_s @ math_model.state.qd
 
+        #TODO: update tau in math_model_state here?
+        tau_stance = self.tau_update()
+        math_model.state.tau = tau_stance
+
         q = math_model.state.q
         state = np.concatenate((q, qd), axis=0)
         # TODO solverStandPhase.integrate(state, dt);
+
+    def tau_update(self):
+        tau = math_model.jac_star.transpose() * math_model.spaceControlForce
+        return tau
 
 
 
