@@ -7,7 +7,7 @@ import math
 import os
 
 basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder + '/../rbdl-orb/build/python/')
+sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
 
 
 class State:
@@ -73,6 +73,8 @@ class ArticulatedLegWalker:
             foot_pos = rbdl.CalcBodyToBaseCoordinates(self.leg_model, state.q, self.leg_model, np.zeros(3), True)
             return foot_pos[1]
 
+        touchdown_event.terminal = True  # TODO what is it doing?
+
         def jumping_event(time, y):
             """
             This event marks the transition from stance phase to fight phase, when the leg not touches the ground any more.
@@ -84,9 +86,9 @@ class ArticulatedLegWalker:
             """
             # from c++ code: foot_pos[1] < 0 and not (springLegDelta < 0.0 && vel_cog(1) > 0.0)
             pass
-
-        touchdown_event.terminal = True  # TODO what is it doing?
-
+        
+        jumping_event.terminal = True  # TODO what is it doing?
+        
         # Flight phase solver
         solver = self.iterate_solver(self.forward_kinematic_flight, [t_init, t_final], state, events=[touchdown_event])
         state, t_impact = self.transfer_fight_to_stance(solver)
@@ -94,6 +96,7 @@ class ArticulatedLegWalker:
         # Stance phase solver
         self.iterate_solver(self.forward_kinematic_stance, [t_impact, t_final], state, [jumping_event])
         # TODO transfer back to stance phase? - and create a loop
+        #state, t_init = self.transfer_stance_to_flight(solver)
 
     def transfer_fight_to_stance(self, solver):
         # set initial time t and state for next iteration which is last element of stored solver values
@@ -109,6 +112,11 @@ class ArticulatedLegWalker:
         # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
         state[self.dof_count:] = qd_plus
         return state, t_impact
+    
+    def transfer_stance_to_flight(self, solver):
+        t_init = solver.t[-1]
+        state = solver.y.T[-1]
+        return state, t_init
 
     def iterate_solver(self, func, t_span, y0, events):
         # Solve an initial value problem for a system of ordinary differential equations (ode)

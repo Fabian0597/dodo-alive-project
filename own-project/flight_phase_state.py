@@ -1,6 +1,10 @@
 import math
 
 import numpy as np
+import sys
+import pathlib
+basefolder = str(pathlib.Path(__file__).parent.absolute())
+sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
 import rbdl
 
 from math_model import MathModel, calc_numerical_gradient

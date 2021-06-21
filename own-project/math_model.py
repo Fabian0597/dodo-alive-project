@@ -2,6 +2,10 @@ import math
 
 import numpy as np
 from numpy.linalg import inv
+import sys
+import pathlib
+basefolder = str(pathlib.Path(__file__).parent.absolute())
+sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
 import rbdl
 
 from articulated_leg_walker import WalkerState, State
