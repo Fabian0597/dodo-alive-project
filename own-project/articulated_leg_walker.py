@@ -30,10 +30,11 @@ class ArticulatedLegWalker:
         self.dof_count = self.leg_model.qdot_size
 
         # initialize generalized coordinates, velocities, accelerations and tau 
-        self.q = np.zeros(self.dof_count)
-        self.qd = np.zeros(self.dof_count)
-        self.qdd = np.zeros(self.dof_count)
-        self.tau = np.zeros(self.dof_count)
+        self.leg_state = State(self.leg_model)
+        self.leg_state.q = np.zeros(self.dof_count)
+        self.leg_state.qd = np.zeros(self.dof_count)
+        self.leg_state.qdd = np.zeros(self.dof_count)
+        self.leg_state.tau = np.zeros(self.dof_count)
         # TODO dont we use the state class here?
 
         self.constraint = rbdl.ConstraintSet()
@@ -64,13 +65,12 @@ class ArticulatedLegWalker:
             :param y: generalized coordinates and their derivative y=[q, qd].transpose()
             :return:
             """
-            state = State(self.leg_model)
-            state.q = y[:self.dof_count]
-            state.qd = y[self.dof_count:]
+            self.leg_state.q = y[:self.dof_count]
+            self.leg_state.qd = y[self.dof_count:]
 
             # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
             foot_id = self.leg_model.GetBodyId('foot')
-            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.leg_model, state.q, self.leg_model, np.zeros(3), True)
+            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.leg_model, self.leg_state.q, self.leg_model, np.zeros(3), True)
             return foot_pos[1]
 
         touchdown_event.terminal = True  # TODO what is it doing?
@@ -90,8 +90,8 @@ class ArticulatedLegWalker:
         jumping_event.terminal = True  # TODO what is it doing?
         
         # Flight phase solver
-        solver = self.iterate_solver(self.forward_kinematic_flight, [t_init, t_final], state, events=[touchdown_event])
-        state, t_impact = self.transfer_fight_to_stance(solver)
+        solver = self.iterate_solver(self.forward_kinematic_flight, [t_init, t_final], solver_state, events=[touchdown_event])
+        solver_state, t_impact = self.transfer_fight_to_stance(solver)
 
         # Stance phase solver
         self.iterate_solver(self.forward_kinematic_stance, [t_impact, t_final], state, [jumping_event])
@@ -101,22 +101,21 @@ class ArticulatedLegWalker:
     def transfer_fight_to_stance(self, solver):
         # set initial time t and state for next iteration which is last element of stored solver values
         t_impact = solver.t[-1]
-        state = solver.y.T[-1]
+        solver_state = solver.y.T[-1]
         # Calculation of change of velocity through impact
         # qd_minus is the generalized velocity before and qd_plus the generalized velocity after the impact
-        q_minus = state[:self.dof_count]  # first half of state vector is q
-        qd_minus = state[self.dof_count:]  # second half of state vector is qd
-        qd_plus = np.ones(model.dof_count)
-        rbdl.ComputeConstraintImpulsesDirect(self.leg_model, q_minus, qd_minus, self.constraints[self.discrete_state],
-                                             qd_plus)
+        q_minus = solver_state[:self.dof_count]  # first half of state vector is q
+        qd_minus = solver_state[self.dof_count:]  # second half of state vector is qd
+        qd_plus = np.ones(self.dof_count)
+        rbdl.ComputeConstraintImpulsesDirect(self.leg_model, q_minus, qd_minus, self.constraints, qd_plus)
         # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
-        state[self.dof_count:] = qd_plus
-        return state, t_impact
+        solver_state[self.dof_count:] = qd_plus
+        return solver_state, t_impact
     
     def transfer_stance_to_flight(self, solver):
         t_init = solver.t[-1]
-        state = solver.y.T[-1]
-        return state, t_init
+        solver_state = solver.y.T[-1]
+        return solver_state, t_init
 
     def iterate_solver(self, func, t_span, y0, events):
         # Solve an initial value problem for a system of ordinary differential equations (ode)
@@ -148,8 +147,8 @@ class ArticulatedLegWalker:
         # state = State(self.models[self.discrete_state])
 
         # state contains q (first half) and qd (second half) from the state space y
-        state.q = y[:self.dof_count]
-        state.qd = y[self.dof_count:]
+        self.leg_state.q = y[:self.dof_count]
+        self.leg_state.qd = y[self.dof_count:]
         """
         TODO: what is tau?
         if (self.discrete_state == 0):
