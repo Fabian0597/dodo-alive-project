@@ -94,9 +94,9 @@ class ArticulatedLegWalker:
         solver_state, t_impact = self.transfer_fight_to_stance(solver)
 
         # Stance phase solver
-        self.iterate_solver(self.forward_kinematic_stance, [t_impact, t_final], state, [jumping_event])
+        solver = self.iterate_solver(self.forward_kinematic_stance, [t_impact, t_final], solver_state, events=[jumping_event])
         # TODO transfer back to stance phase? - and create a loop
-        #state, t_init = self.transfer_stance_to_flight(solver)
+        #solver_state, t_init = self.transfer_stance_to_flight(solver)
 
     def transfer_fight_to_stance(self, solver):
         # set initial time t and state for next iteration which is last element of stored solver values
@@ -158,12 +158,12 @@ class ArticulatedLegWalker:
         """
         # calculate qdd from q, qd, tau, fext for the model with the forward dynamics
         # rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, state.q, state.qd, state.tau, self.constraints[self.discrete_state], state.qdd) --> this is just done during stance
-        rbdl.ForwardDynamics(self.leg_model, state.q, state.qd, state.tau, state.qdd)
+        rbdl.ForwardDynamics(self.leg_model, self.leg_state.q, self.leg_state.qd, self.leg_state.tau, self.leg_state.qdd)
 
         # return res = [qd, qdd] from the forwarddynamics which can then be given to the solver to be integrated by the ivp_solver
         res = np.zeros(2 * self.dof_count)
-        res[:self.dof_count] = state.qd
-        res[self.dof_count:] = state.qdd
+        res[:self.dof_count] = self.leg_state.qd
+        res[self.dof_count:] = self.leg_state.qdd
         return res
 
     def forward_kinematic_stance(self, time, y):
@@ -176,8 +176,8 @@ class ArticulatedLegWalker:
         # state = State(self.models[self.discrete_state])
 
         # state contains q (first half) and qd (second half) from the state space y
-        state.q = y[:self.dof_count]
-        state.qd = y[self.dof_count:]
+        self.leg_state.q = y[:self.dof_count]
+        self.leg_state.qd = y[self.dof_count:]
 
         """
         TODO: what is tau?
@@ -188,13 +188,12 @@ class ArticulatedLegWalker:
         """
 
         # calculate qdd from q, qd, tau, f_ext for the model with the forward dynamics
-        rbdl.ForwardDynamicsConstraintsDirect(self.models[self.discrete_state], state.q, state.qd, state.tau,
-                                              self.constraint, state.qdd)
+        rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, self.leg_state.q, self.leg_state.qd, self.leg_state.tau, self.constraint, self.leg_state.qdd)
 
         # return res = [qd, qdd] from the forwarddynamics which can then be given to the solver to be integrated by the ivp_solver
         res = np.zeros(2 * self.dof_count)
-        res[:self.dof_count] = state.qd
-        res[self.dof_count:] = state.qdd
+        res[:self.dof_count] = self.leg_state.qd
+        res[self.dof_count:] = self.leg_state.qdd
         return res
 
     def log(self, time, q):
