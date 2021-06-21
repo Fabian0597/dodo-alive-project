@@ -16,8 +16,11 @@ def calc_numerical_gradient(x_new, x_old, step_size):
 
 
 class MathModel:
+    """
+    represents the mathematical model, where all the variables of the robot leg are stored
+    """
 
-    def __init__(self, model, walker_state: WalkerState, timestep):
+    def __init__(self, model, timestep):
         self.state = State()
         self.timestep = timestep
 

@@ -1,21 +1,33 @@
 import sys
 import pathlib
+
+from motion_state_machine import MotionStateMachine
+
+basefolder = str(pathlib.Path(__file__).parent.absolute())
+sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
 import rbdl
 import numpy as np
 from scipy.integrate import solve_ivp
 import math
 import os
 
-basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
-
 
 class State:
-    def __init__(self, model):
-        self.q = np.zeros(model.qdot_size)
-        self.qd = np.zeros(model.qdot_size)
-        self.qdd = np.zeros(model.qdot_size)
-        self.tau = np.zeros(model.qdot_size)
+    def __init__(self, q_size: int, q=None, qd=None, qdd=None, tau=None):
+        self.q = q or np.zeros(q_size)
+        self.qd = qd or np.zeros(q_size)
+        self.qdd = qdd or np.zeros(q_size)
+        self.tau = tau or np.zeros(q_size)
+
+    @classmethod
+    def from_q_qd_array(cls, y, q_size):
+        state = State(q_size)
+        state.q = y[:q_size]
+        state.qd = y[q_size:]
+        return state
+
+    def to_q_qd_array(self):
+        return np.concatenate((self.q, self.qd), axis=0)
 
 
 class ArticulatedLegWalker:
@@ -26,175 +38,57 @@ class ArticulatedLegWalker:
         # stance model
         self.leg_model_constraint = rbdl.loadModel(leg_model_path)
 
+        self.state_machine = MotionStateMachine(self.leg_model)
+
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
 
         # initialize generalized coordinates, velocities, accelerations and tau 
         self.leg_state = State(self.leg_model)
-        self.leg_state.q = np.zeros(self.dof_count)
-        self.leg_state.qd = np.zeros(self.dof_count)
-        self.leg_state.qdd = np.zeros(self.dof_count)
-        self.leg_state.tau = np.zeros(self.dof_count)
-        # TODO dont we use the state class here?
 
         self.constraint = rbdl.ConstraintSet()
         foot_id = self.leg_model.GetBodyId('foot')
-        y_plane = np.array([0, 1, 0], dtype=np.double)
+        y_plane = np.array([0, 1, 0], dtype=np.double)  # TODO this is not used
         x_plane = np.array([1, 0, 0], dtype=np.double)
         self.constraint.AddContactConstraint(foot_id, np.zeros(3), x_plane)
         self.constraint.Bind(self.leg_model_constraint)
 
         self.csv = open(basefolder + '/animation.csv', 'w')
 
-    def solve(self, t_init, t_final, state):
+    def solve(self, t_init, t_final, init_state):
         """
         integrate to the output of the forward kinematics which is res = [qd, qdd] to get new state y = [q, qd]
 
         :param steps: number of steps during integration
         :param timestep: step size for integration loop of the solver
         :param des_position: desired position target for the robot
-        :param state: initial state of the robot's leg (q, qd)
+        :param init_state: initial state of the robot's leg (q, qd)
         """
+        active_state = self.state_machine.active_state
 
-        def touchdown_event(time, y):
-            """
-            This event marks the contact of foot with ground.
-            It is an event function for integrating solver of the flight phase.
-            When touchdown_event(t,y) = 0 solver stops
-            :param time: time
-            :param y: generalized coordinates and their derivative y=[q, qd].transpose()
-            :return:
-            """
-            self.leg_state.q = y[:self.dof_count]
-            self.leg_state.qd = y[self.dof_count:]
+        while t_init < t_final:
+            # Solve an initial value problem for a system of ordinary differential equations (ode)
+            # Interval of integration (t_init,, t_final).
+            # state = initial state
+            # function to be integrated = f
+            # it solves the ode until it reaches the event touchdown_event(y,t)=0
+            # so the foot hits the ground and has (y height 0)
+            solver = solve_ivp(
+                fun=active_state.forward_kinematic,
+                t_span=[t_init, t_final],
+                y0=init_state,
+                events=active_state.events
+            )
 
-            # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
-            foot_id = self.leg_model.GetBodyId('foot')
-            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.leg_model, self.leg_state.q, self.leg_model, np.zeros(3), True)
-            return foot_pos[1]
+            # iterate over internal states saved by the solver during integration
+            for i in range(0, len(solver.t)):
+                # returns the value of the solution y=[q,qd] at time stamp T[i] from the interval of integration
+                row = solver.y.T[i]
+                # log the time stamp T[i] from the interval of integration
+                # and the corresp first half of the y vector solution which contains q and not qd
+                self.log(solver.t[i], row[:self.dof_count])
 
-        touchdown_event.terminal = True  # TODO what is it doing?
-
-        def jumping_event(time, y):
-            """
-            This event marks the transition from stance phase to fight phase, when the leg not touches the ground any more.
-            It is an event function for integrating solver of the stance phase.
-            When touchdown_event(t,y) = 0 solver stops
-            :param time: time
-            :param y: generalized coordinates and their derivative y=[q, qd].transpose()
-            :return:
-            """
-            # from c++ code: foot_pos[1] < 0 and not (springLegDelta < 0.0 && vel_cog(1) > 0.0)
-            pass
-        
-        jumping_event.terminal = True  # TODO what is it doing?
-        
-        # Flight phase solver
-        solver = self.iterate_solver(self.forward_kinematic_flight, [t_init, t_final], solver_state, events=[touchdown_event])
-        solver_state, t_impact = self.transfer_fight_to_stance(solver)
-
-        # Stance phase solver
-        solver = self.iterate_solver(self.forward_kinematic_stance, [t_impact, t_final], solver_state, events=[jumping_event])
-        # TODO transfer back to stance phase? - and create a loop
-        #solver_state, t_init = self.transfer_stance_to_flight(solver)
-
-    def transfer_fight_to_stance(self, solver):
-        # set initial time t and state for next iteration which is last element of stored solver values
-        t_impact = solver.t[-1]
-        solver_state = solver.y.T[-1]
-        # Calculation of change of velocity through impact
-        # qd_minus is the generalized velocity before and qd_plus the generalized velocity after the impact
-        q_minus = solver_state[:self.dof_count]  # first half of state vector is q
-        qd_minus = solver_state[self.dof_count:]  # second half of state vector is qd
-        qd_plus = np.ones(self.dof_count)
-        rbdl.ComputeConstraintImpulsesDirect(self.leg_model, q_minus, qd_minus, self.constraints, qd_plus)
-        # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
-        solver_state[self.dof_count:] = qd_plus
-        return solver_state, t_impact
-    
-    def transfer_stance_to_flight(self, solver):
-        t_init = solver.t[-1]
-        solver_state = solver.y.T[-1]
-        return solver_state, t_init
-
-    def iterate_solver(self, func, t_span, y0, events):
-        # Solve an initial value problem for a system of ordinary differential equations (ode)
-        # Interval of integration (t_init,, t_final).
-        # state = initial state
-        # function to be integrated = f
-        # it solves the ode until it reaches the event touchdown_event(y,t)=0 so the foot hits the ground and has (y height 0)
-        solver = solve_ivp(func, t_span, y0, events=events)
-
-        # iterate over internal states saved by the solver during integration
-        for i in range(0, len(solver.t)):
-            # returns the value of the solution y=[q,qd] at time stamp T[i] from the interval of integration
-            row = solver.y.T[i]
-
-            # log the time stamp T[i] from the interval of integration and the corresp first half of the y vector solution which contains q and not qd
-            self.log(solver.t[i], row[:self.dof_count])
-
-        return solver
-
-    def forward_kinematic_flight(self, time, y):
-        """
-        computes the generalized accelerations from given generalized states, velocities and forces during flight
-        :param time: time
-        :param y: generalized coordinates (/ state of the robot TODO is this True?)
-            and their derivative y=[q, qd].transpose()
-        :return: derivative yd = [qd, qdd]
-        """
-
-        # state = State(self.models[self.discrete_state])
-
-        # state contains q (first half) and qd (second half) from the state space y
-        self.leg_state.q = y[:self.dof_count]
-        self.leg_state.qd = y[self.dof_count:]
-        """
-        TODO: what is tau?
-        if (self.discrete_state == 0):
-            state.tau[3] = 50.0 * (15.0 * math.pi / 180.0 - state.q[3]) - 5.0 * state.qd[3]
-        else:
-            state.tau[3] = 50.0 * (-15.0 * math.pi / 180.0 - state.q[3]) - 5.0 * state.qd[3]
-        """
-        # calculate qdd from q, qd, tau, fext for the model with the forward dynamics
-        # rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, state.q, state.qd, state.tau, self.constraints[self.discrete_state], state.qdd) --> this is just done during stance
-        rbdl.ForwardDynamics(self.leg_model, self.leg_state.q, self.leg_state.qd, self.leg_state.tau, self.leg_state.qdd)
-
-        # return res = [qd, qdd] from the forwarddynamics which can then be given to the solver to be integrated by the ivp_solver
-        res = np.zeros(2 * self.dof_count)
-        res[:self.dof_count] = self.leg_state.qd
-        res[self.dof_count:] = self.leg_state.qdd
-        return res
-
-    def forward_kinematic_stance(self, time, y):
-        """
-        forward kinematics: computes the generalized accelerations from given generalized states, velocities and forces
-        params t: time
-        params y: generalized coordinates and their derivative y=[q, qd].transpose()
-        return: derivative yd = [qd, qdd]
-        """
-        # state = State(self.models[self.discrete_state])
-
-        # state contains q (first half) and qd (second half) from the state space y
-        self.leg_state.q = y[:self.dof_count]
-        self.leg_state.qd = y[self.dof_count:]
-
-        """
-        TODO: what is tau?
-        if (self.discrete_state == 0):
-            state.tau[3] = 50.0 * (15.0 * math.pi / 180.0 - state.q[3]) - 5.0 * state.qd[3]
-        else:
-            state.tau[3] = 50.0 * (-15.0 * math.pi / 180.0 - state.q[3]) - 5.0 * state.qd[3]
-        """
-
-        # calculate qdd from q, qd, tau, f_ext for the model with the forward dynamics
-        rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, self.leg_state.q, self.leg_state.qd, self.leg_state.tau, self.constraint, self.leg_state.qdd)
-
-        # return res = [qd, qdd] from the forwarddynamics which can then be given to the solver to be integrated by the ivp_solver
-        res = np.zeros(2 * self.dof_count)
-        res[:self.dof_count] = self.leg_state.qd
-        res[self.dof_count:] = self.leg_state.qdd
-        return res
+            state, t_init = self.state_machine.switch_to_next_state(solver)
 
     def log(self, time, q):
         """
@@ -222,15 +116,11 @@ if __name__ == "__main__":
         leg_model_path=basefolder + "/articulatedLeg.lua"
     )
 
-    # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2)
-    q = np.array([0.0, 1.0, math.radians(0.0), math.radians(25.0)])
-
-    # qd: The model's initial velocity.
-    qd = np.zeros(model.dof_count)
-
-    state = np.concatenate((q, qd), axis=0)
-
     t_init = 0
     t_final_state = 2
-    model.solve(t_init, t_final_state)
+    init_state = State(model.dof_count,
+                       # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2)
+                       q=np.array([0.0, 1.0, math.radians(0.0), math.radians(25.0)]))
+
+    model.solve(t_init, t_final_state, init_state.to_q_qd_array())
     model.meshup()

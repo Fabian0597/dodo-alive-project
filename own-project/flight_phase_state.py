@@ -1,4 +1,5 @@
 import math
+from typing import Tuple, Any
 
 import numpy as np
 import sys
@@ -43,7 +44,29 @@ def limit_value_to_max_abs(value, max_abs):
 
 class FlightPhaseState(State):
 
-    def __init__(self):
+    def __init__(self, math_model):
+        super().__init__(math_model)
+
+        def touchdown_event(time, y):
+            """
+            This event marks the contact of foot with ground.
+            It is an event function for integrating solver of the flight phase.
+            When touchdown_event(t,y) = 0 solver stops
+            :param time: time
+            :param y: generalized coordinates and their derivative y=[q, qd].transpose()
+            :return:
+            """
+            self.leg_state.q = y[:self.dof_count]
+            self.leg_state.qd = y[self.dof_count:]
+
+            # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
+            foot_id = self.leg_model.GetBodyId('foot')
+            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.leg_model, self.leg_state.q, self.leg_model, np.zeros(3), True)
+            return foot_pos[1]
+
+        touchdown_event.terminal = True
+
+        self.events = [touchdown_event]
 
         # Position PI Controller
         self.max_pos = 1
@@ -64,37 +87,42 @@ class FlightPhaseState(State):
         self.set_forces = True
         self.set_forces_glob = False
 
-    def run_solver(self, iteration_counter: int, timestep: float, math_model: MathModel):
+    def controller_iteration(self, iteration_counter: int, timestep: float):
         """
+        performs iteration for the controller of the flight phase.
+        This simulates moves the leg to the right position to control velocity, position of the robot
         run the solver for the flight phase state. Calculates the xdd_des (desired acceleration) of the robot.
         :param iteration_counter: the current iteration number
         :param timestep: length of a time step / iteration
-        :param math_model: reference to the math model, where all the variables of the mathematical model
-            of the robot are stored
         :return:
         """
 
         # DISTURBED
         # TODO contact_nr
-        if abs(math_model.vel_com[1]) < 0.01 and contact_nr == 3 and self.set_forces:
+        if abs(self.math_model.vel_com[1]) < 0.01 and contact_nr == 3 and self.set_forces:
             self.set_forces = False
             self.set_forces_glob = True
 
-        p_error = self.position_controller(math_model)
+        des_pos = None  # TODO: desired_xCom
 
-        angle_of_attack = self.velocity_controller(iteration_counter, math_model, p_error)
+        # Position Controller
+        vel_des = self.position_controller(self.math_model, des_pos)
 
-        xdd = self.pose_controller(math_model, timestep, angle_of_attack)
+        # Velocity Controller
+        angle_of_attack = self.velocity_controller(iteration_counter, self.math_model, vel_des)
+
+        #
+        xdd = self.pose_controller(self.math_model, timestep, angle_of_attack)
 
         # TODO what to do with xdd and tau ?
         tau_flight = self.tau_update(xdd)
 
         #TODO: update tau in math_model_state here?
-        math_model.state.tau = tau_flight
+        self.math_model.state.tau = tau_flight
 
-        math_model.update()
+        self.math_model.update()
         # TODO x_new = solverFlightPhase.integrate(xVector, dt);
-        math_model.impact = False
+        self.math_model.impact = False
 
     def pose_controller(self, math_model, timestep, angle_of_attack):
         # POSE/LEG CONTROLLER
@@ -118,7 +146,9 @@ class FlightPhaseState(State):
                                                                 d_error=vel_error)
         return xdd
 
-    def velocity_controller(self, iteration_counter, math_model, p_error):
+    def velocity_controller(self, iteration_counter, math_model, vel_des):
+        cur_vel = math_model.vel_com[0]  # current velocity
+        p_error = (cur_vel - vel_des)
         # FIRST IMPACT
         if math_model.first_iteration_after_impact:
             math_model.first_iteration_after_impact = False
@@ -137,22 +167,39 @@ class FlightPhaseState(State):
         math_model.angle_of_attack = limit_value_to_max_abs(math_model.angle_of_attack, self.max_angle_of_attack)
         return math_model.angle_of_attack
 
-    def position_controller(self, math_model):
+    def position_controller(self, math_model, des_pos):
         # POSITION CONTROLLER (control velocity to achieve a desired target)
-        des_pos = None  # TODO: desired_xCom
         cur_pos = math_model.pos_com[0]  # current position
-        cur_vel = math_model.vel_com[0]  # current velocity
         p_error = (des_pos - cur_pos)
         self.position_pi_ctr.i_error += p_error
         self.position_pi_ctr.i_error = limit_value_to_max_abs(self.position_pi_ctr.i_error, self.max_pos)
         vel_des = self.position_pi_ctr.control_function(p_error=p_error)
         vel_des = limit_value_to_max_abs(vel_des, self.max_vel)
-        p_error = (cur_vel - vel_des)
-        return p_error
+        return vel_des
 
-    def tau_update(self, xdd):
+    def tau_update(self, math_model: MathModel, xdd):
         #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
         # von qr und pinv
         pinv_jac_base_s = np.linalg.pinv(np.linalg.qr(math_model.jac_base_s))
         tau = math_model.mass_matrix * pinv * xdd
         return tau
+
+    def transfer_to_next_state(self, solver_result) -> Tuple[Any, Any]:
+        """
+        transfer flight to stance:
+        transfers the solver_result to the state and start time for the next stance phase state
+        :param solver_result: resulting output of the solver
+        :return: a tuple of robot's state for the next phase and the end time (start time for the next state)
+        """
+        # set initial time t and state for next iteration which is last element of stored solver values
+        t_impact = solver_result.t[-1]
+        solver_state = solver_result.y.T[-1]
+        # Calculation of change of velocity through impact
+        # qd_minus is the generalized velocity before and qd_plus the generalized velocity after the impact
+        q_minus = solver_state[:self.dof_count]  # first half of state vector is q
+        qd_minus = solver_state[self.dof_count:]  # second half of state vector is qd
+        qd_plus = np.ones(self.dof_count)
+        rbdl.ComputeConstraintImpulsesDirect(self.leg_model, q_minus, qd_minus, self.constraints, qd_plus)
+        # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
+        solver_state[self.dof_count:] = qd_plus
+        return solver_state, t_impact

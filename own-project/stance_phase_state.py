@@ -1,3 +1,5 @@
+from typing import Tuple, Any
+
 import numpy as np
 import sys
 import pathlib
@@ -11,49 +13,76 @@ from motion_state_machine import State
 
 class StancePhaseState(State):
 
-    def run_solver(self, iteration_counter: int, timestep: float, math_model: MathModel):
+    def __init__(self, math_model: MathModel):
+        super().__init__(math_model)
+
+        def jumping_event(time, y):
+            """
+            This event marks the transition from stance phase to fight phase, when the leg not touches the ground any more.
+            It is an event function for integrating solver of the stance phase.
+            When touchdown_event(t,y) = 0 solver stops
+            :param time: time
+            :param y: generalized coordinates and their derivative y=[q, qd].transpose()
+            :return:
+            """
+            # from c++ code: foot_pos[1] < 0 and not (springLegDelta < 0.0 && vel_cog(1) > 0.0)
+            pass
+
+        jumping_event.terminal = True
+
+        self.events = [jumping_event]
+
+    def controller_iteration(self, iteration_counter: int, timestep: float):
         """
-        run the solver for this state
-        :param iteration_counter: the current iteration number
-        :param timestep: length of a time step / iteration
-        :param math_model: reference to the math model, where all the variables of the mathematical model
-            of the robot are stored
-        :return:
+        performs iteration for the controller of the stance phase.
+        This simulates a mass-spring system (SLIP)
+        :param iteration_counter: iteration for counter of the solver
+        :param timestep: timestep of the current iteration
+        :param math_model: reference to the math_model
+        :return: torque (tau) from the controller (state of the robot's leg)
         """
 
-        if not math_model.impact:  # impact of the foot / start of stance phase
-            math_model.impact_com = math_model.pos_com
-            math_model.impact = True
-            math_model.first_iteration_after_impact = True
-            math_model.vel_com_start_stance = math_model.vel_com
+        if not self.math_model.impact:  # impact of the foot / start of stance phase
+            self.math_model.impact_com = self.math_model.pos_com
+            self.math_model.impact = True
+            self.math_model.first_iteration_after_impact = True
+            self.math_model.vel_com_start_stance = self.math_model.vel_com
 
             # Energy compensation for impact at landing (kinetic energy loss of the cog point in the collision)
-            mass = math_model.robot_mass
-            qd = math_model.state.qd
-            jac_cog = math_model.jac_cog
-            nullspace_s = math_model.nullspace_s
+            mass = self.math_model.robot_mass
+            qd = self.math_model.state.qd
+            jac_cog = self.math_model.jac_cog
+            nullspace_s = self.math_model.nullspace_s
             matrix_diff = jac_cog.transpose() @ jac_cog - nullspace_s.transpose() @ jac_cog.transpose() @ jac_cog @ nullspace_s
             vel_com_diff = qd.transpose() @ matrix_diff @ qd
-            delta_e_kin = abs(0.5 * math_model.robot_mass * vel_com_diff)
+            delta_e_kin = abs(0.5 * self.math_model.robot_mass * vel_com_diff)
 
-            math_model.leg_length_delta = np.sqrt(2 * delta_e_kin / math_model.spring_stiffness)
+            self.math_model.leg_length_delta = np.sqrt(2 * delta_e_kin / self.math_model.spring_stiffness)
 
-            math_model.update()
+            self.math_model.update()
 
         # new generalized velocity after impact
-        math_model.state.qd = nullspace_s @ math_model.state.qd
+        self.math_model.state.qd = nullspace_s @ self.math_model.state.qd
 
         #TODO: update tau in math_model_state here?
-        tau_stance = self.tau_update()
-        math_model.state.tau = tau_stance
+        tau_stance = self.tau_update(self.math_model)
+        self.math_model.state.tau = tau_stance
 
-        q = math_model.state.q
-        state = np.concatenate((q, qd), axis=0)
-        # TODO solverStandPhase.integrate(state, dt);
+        return self.math_model.state
 
-    def tau_update(self):
+    def tau_update(self, math_model: MathModel):
         tau = math_model.jac_star.transpose() * math_model.spaceControlForce
         return tau
+
+    def transfer_to_next_state(self, solver_result) -> Tuple[Any, Any]:
+        """
+        transfer stance to flight
+        :param solver_result: resulting output of the solver
+        :return: a tuple of robot's state for the next phase and the end time (start time for the next state)
+        """
+        t_init = solver_result.t[-1]
+        solver_state = solver_result.y.T[-1]
+        return solver_state, t_init
 
 
 
