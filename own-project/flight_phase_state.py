@@ -56,12 +56,12 @@ class FlightPhaseState(State):
             :param y: generalized coordinates and their derivative y=[q, qd].transpose()
             :return:
             """
-            self.leg_state.q = y[:self.dof_count]
-            self.leg_state.qd = y[self.dof_count:]
+            self.math_model.state.q = y[:self.dof_count]
+            self.math_model.state.qd = y[self.dof_count:]
 
             # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
-            foot_id = self.leg_model.GetBodyId('foot')
-            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.leg_model, self.leg_state.q, self.leg_model, np.zeros(3), True)
+            foot_id = self.math_model.model.GetBodyId('foot')
+            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.leg_state.q, self.leg_model, np.zeros(3), True)
             return foot_pos[1]
 
         touchdown_event.terminal = True
@@ -114,15 +114,14 @@ class FlightPhaseState(State):
         #
         xdd = self.pose_controller(self.math_model, timestep, angle_of_attack)
 
-        # TODO what to do with xdd and tau ?
-        tau_flight = self.tau_update(xdd)
-
-        #TODO: update tau in math_model_state here?
-        self.math_model.state.tau = tau_flight
+        #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
+        pinv_jac_base_s = np.linalg.pinv(np.linalg.qr(self.math_model.jac_base_s))
+        tau_flight = self.math_model.mass_matrix * pinv_jac_base_s * xdd
 
         self.math_model.update()
-        # TODO x_new = solverFlightPhase.integrate(xVector, dt);
         self.math_model.impact = False
+
+        return tau_flight
 
     def pose_controller(self, math_model, timestep, angle_of_attack):
         # POSE/LEG CONTROLLER
@@ -148,7 +147,10 @@ class FlightPhaseState(State):
 
     def velocity_controller(self, iteration_counter, math_model, vel_des):
         cur_vel = math_model.vel_com[0]  # current velocity
+
+        # Proportional Part PID
         p_error = (cur_vel - vel_des)
+
         # FIRST IMPACT
         if math_model.first_iteration_after_impact:
             math_model.first_iteration_after_impact = False
@@ -158,31 +160,32 @@ class FlightPhaseState(State):
             # TODO do we need this
             # vel_com_start_flight = math_model.vel_com
             # vel_com_diff_phase = vel_com_start_flight - math_model.vel_com_start_stance
+            
+            # Integral Part PID
             self.velocity_pid_ctr.i_error += p_error  # accumalates the error - integral term
-        # VELOCITY CONTROLLER
+
         self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error, self.max_control_vel)
         vel_com_x = math_model.vel_com[0]  # velocity of center of mass in x direction
         if iteration_counter % 5 == 0:
+            # PID
             math_model.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=vel_com_x)
         math_model.angle_of_attack = limit_value_to_max_abs(math_model.angle_of_attack, self.max_angle_of_attack)
         return math_model.angle_of_attack
 
     def position_controller(self, math_model, des_pos):
-        # POSITION CONTROLLER (control velocity to achieve a desired target)
+        
         cur_pos = math_model.pos_com[0]  # current position
+
+        # Proportional Part PID
         p_error = (des_pos - cur_pos)
+        # Integral Part PID
         self.position_pi_ctr.i_error += p_error
         self.position_pi_ctr.i_error = limit_value_to_max_abs(self.position_pi_ctr.i_error, self.max_pos)
+        
+        # PID
         vel_des = self.position_pi_ctr.control_function(p_error=p_error)
         vel_des = limit_value_to_max_abs(vel_des, self.max_vel)
         return vel_des
-
-    def tau_update(self, math_model: MathModel, xdd):
-        #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
-        # von qr und pinv
-        pinv_jac_base_s = np.linalg.pinv(np.linalg.qr(math_model.jac_base_s))
-        tau = math_model.mass_matrix * pinv * xdd
-        return tau
 
     def transfer_to_next_state(self, solver_result) -> Tuple[Any, Any]:
         """

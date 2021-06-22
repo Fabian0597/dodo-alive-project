@@ -13,11 +13,10 @@ import os
 
 
 class State:
-    def __init__(self, q_size: int, q=None, qd=None, qdd=None, tau=None):
+    def __init__(self, q_size: int, q=None, qd=None, qdd=None):
         self.q = q or np.zeros(q_size)
         self.qd = qd or np.zeros(q_size)
         self.qdd = qdd or np.zeros(q_size)
-        self.tau = tau or np.zeros(q_size)
 
     @classmethod
     def from_q_qd_array(cls, y, q_size):
@@ -43,9 +42,6 @@ class ArticulatedLegWalker:
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
 
-        # initialize generalized coordinates, velocities, accelerations and tau 
-        self.leg_state = State(self.leg_model)
-
         self.constraint = rbdl.ConstraintSet()
         foot_id = self.leg_model.GetBodyId('foot')
         y_plane = np.array([0, 1, 0], dtype=np.double)  # TODO this is not used
@@ -65,6 +61,7 @@ class ArticulatedLegWalker:
         :param init_state: initial state of the robot's leg (q, qd)
         """
         active_state = self.state_machine.active_state
+        state = init_state
 
         while t_init < t_final:
             # Solve an initial value problem for a system of ordinary differential equations (ode)
@@ -74,9 +71,9 @@ class ArticulatedLegWalker:
             # it solves the ode until it reaches the event touchdown_event(y,t)=0
             # so the foot hits the ground and has (y height 0)
             solver = solve_ivp(
-                fun=active_state.forward_kinematic,
+                fun=active_state.solver_function,
                 t_span=[t_init, t_final],
-                y0=init_state,
+                y0=state,
                 events=active_state.events
             )
 

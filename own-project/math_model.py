@@ -41,7 +41,7 @@ class MathModel:
         self.mu_star = None
         self.p_star = None
         self.mass_matrix = None
-        self.mass_matrix_ee = None
+        self.mass_matrix_ee = None 
         self.b_vector = None
         self.selection_matrix = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
         self.g = np.array([0, 9.81]).transpose()
@@ -190,6 +190,9 @@ class MathModel:
         Computes the joint space inertia matrix by using the Composite Rigid Body Algorithm
         """
         rbdl.CompositeRigidBodyAlgorithm(self.model, self.state.q, self.mass_matrix, True)
+    
+    def mass_matrix_EE_update(self):
+        self.mass_matrix_ee = inv(self.jac_s*inv(self.mass_matrix)*self.jac_s.transpose())
 
     def b_vector_update(self):
         """
@@ -219,6 +222,7 @@ class MathModel:
         self.spring_force_update()
         self.jacobian_s_update()
         self.mass_matrix_update()
+        self.mass_matrix_EE_update
         self.lambda_s_update()
         self.nullspace_s_update()
         self.jacobian_cog_update()

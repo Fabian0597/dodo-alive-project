@@ -44,7 +44,7 @@ class State:
         """
         pass  # this is implemented for the concrete states only
 
-    def forward_kinematic(self, time, y):
+    def solver_function(self, time, y):
         """
         computes the generalized accelerations from given generalized states, velocities and forces during flight
         :param time: time
@@ -54,15 +54,15 @@ class State:
         self.iteration_counter += 1
         delta_time = self._get_delta_time(time)
 
-        self.math_model.state = articulated_leg_walker.State.from_q_qd_array(y, self.dof_count)
+        self.math_model.state = State.from_q_qd_array(y, self.dof_count)
 
-        desired_state = self.controller_iteration(self.iteration_counter, delta_time)
+        tau_desired = self.controller_iteration(self.iteration_counter, delta_time)
 
-        state_derivative = self._forward_dynamics(desired_state)
+        state_derivative = self._forward_dynamics(tau_desired)
 
         return state_derivative
 
-    def _forward_dynamics(self, leg_state: State):
+    def _forward_dynamics(self, tau_desired):
         """
         calculates the forward dynamics given tau from the controller, f_ext and the leg state q, qd
         :param leg_state: state variables of the leg (q, qd, tau)
@@ -71,12 +71,13 @@ class State:
         # calculate qdd from q, qd, tau, f_ext for the model with the forward dynamics
         # rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, state.q, state.qd, state.tau,
         #   self.constraints[self.discrete_state], state.qdd) --> this is just done during stance
-        rbdl.ForwardDynamics(self.math_model.model, leg_state.q, leg_state.qd, leg_state.tau, leg_state.qdd)
+        #rbdl.ForwardDynamics(self.math_model.model, leg_state.q, leg_state.qd, leg_state.tau, leg_state.qdd)
+        rbdl.ForwardDynamics(self.math_model.model, self.math_model.state.q, self.math_model.state.qd, tau_desired, self.math_model.state.qdd)
 
         # return res = [qd, qdd] from the forward dynamics which can then be given to the solver to be integrated by the ivp_solver
         state = np.zeros(2 * self.dof_count)
-        state[:self.dof_count] = self.leg_state.qd
-        state[self.dof_count:] = self.leg_state.qdd
+        state[:self.dof_count] = self.math_model.state.qd
+        state[self.dof_count:] = self.math_model.state.qdd
         return state
 
     def _get_delta_time(self, time):
@@ -99,13 +100,13 @@ class MotionStateMachine:
         flight_state = FlightPhaseState(self.math_model)
         stance_state = StancePhaseState(self.math_model)
         self.states = {}
-        self.states.put("Flight", flight_state)
-        self.states.put("Stance", stance_state)
+        self.states["Flight"] = flight_state
+        self.states["Stance"] = stance_state
         self.active_state: State = self.states.get("Flight")
 
         self.transitions = {}
-        self.states.put(flight_state, stance_state)
-        self.states.put(stance_state, flight_state)
+        self.transitions[flight_state] = stance_state
+        self.transitions[stance_state] = flight_state
 
     def switch_to_next_state(self, solver_result):
         """
@@ -114,6 +115,8 @@ class MotionStateMachine:
         :return: robot's state and time of the end of the last phase / state
         """
         state, time = self.active_state.transfer_to_next_state(solver_result)
-        if isinstance(self.active_state, FlightPhaseState):
-            self.active_state = self.transitions(self.active_state)  # get the next state
+        self.active_state = self.transitions[self.active_state]
+
+        # give new state to active_state
+        self.active_state.math_model.state = self.active_state.math_model.state.from_q_qd_array(state, self.dof_count)
         return state, time
