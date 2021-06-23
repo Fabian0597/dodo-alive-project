@@ -102,7 +102,7 @@ class MathModel:
             cog_mass_weighted += cog_in_world * self.model.mBodies[i].mMass
             mass_sum = mass_sum + self.model.mBodies[i].mMass
 
-        self.pos_com = cog_mass_weighted / mass_sum
+        self.pos_com = (cog_mass_weighted / mass_sum)[:2]
 
 
 
@@ -118,7 +118,7 @@ class MathModel:
         Updates the leg length
         """
         foot_id = self.model.GetBodyId("foot")
-        pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3), True)
+        pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3), True)[:2]
         self.leg_length = np.linalg.norm(self.pos_com - pos_foot, ord=2)
 
     def current_leg_angle_update(self):
@@ -126,7 +126,7 @@ class MathModel:
         Updates the leg angle
         """
         foot_id = self.model.GetBodyId("foot")
-        pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3), True)
+        pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3), True)[:2]
         dx = pos_foot[0] - self.pos_com[0]
         dy = pos_foot[1] - self.pos_com[1]
         self.leg_angle = math.degrees(math.atan2(abs(dx), abs(dy)))
@@ -136,7 +136,7 @@ class MathModel:
         Updates the Jacobian (center of gravity)
         """
         num_of_joints = len(self.model.mBodies)
-        # TODO numerical? previous_jac = self.jac_cog
+        # TODO numerical? previous_jac = self.jac_cog # TODO: oben wird init von jac mit 6xdof initialisiert, was íst besser?
         jac_cog_sum = np.zeros((3, self.model.dof_count))
         mass_sum = 0
 
@@ -148,7 +148,7 @@ class MathModel:
             mass_sum += body_i.mMass
             jac_cog_sum += jac_cog_i
 
-        self.jac_cog = jac_cog_sum / mass_sum
+        self.jac_cog = (jac_cog_sum / mass_sum)[:2,:self.model.dof_count]
         self.robot_mass = mass_sum
 
         jac_dot_cog = np.zeros((3, self.model.dof_count))
@@ -163,11 +163,10 @@ class MathModel:
 
         pre_jac_s = self.jac_s
 
-        rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base,
-                               True)
+        rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base,True)
         rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3), jac_foot, True)
-        self.jac_base_s = jac_foot - jac_base
-        self.jac_s = jac_foot
+        self.jac_base_s = jac_foot[:2,:self.model.dof_count] - jac_base[:2,:self.model.dof_count]
+        self.jac_s = jac_foot[:2,:self.model.dof_count]
         self.jac_s_dot = calc_numerical_gradient(self.jac_s, pre_jac_s, self.timestep)
 
     def jacobian_star_update(self):
@@ -190,7 +189,7 @@ class MathModel:
         """
         update the inertia matrix s Hutter paper between (4) and (5)
         """
-        self.lambda_s = inv(self.jac_s @ inv(self.mass_matrix) @ self.jac_s.transpose()
+        self.lambda_s = inv(self.jac_s @ inv(self.mass_matrix) @ self.jac_s.transpose())
 
     def lambda_star_update(self):
         """
@@ -239,7 +238,7 @@ class MathModel:
     def spring_force_update(self):
         foot_id = self.model.GetBodyId("foot")
         footInBase = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3),
-                                                    True)
+                                                    True)[:2]
         actualComInFoot = self.pos_com - footInBase
         if self.impact_com is not None:  # TODO. what todo if impactCom was not updated yet with actualcom --> error if impactCom is None.
             impactComInFoot = self.impact_com - footInBase

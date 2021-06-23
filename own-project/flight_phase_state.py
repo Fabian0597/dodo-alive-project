@@ -131,7 +131,7 @@ class FlightPhaseState(PhaseState):
         pos_foot_des[1] = math_model.pos_com[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
         # Proportional part PID
         foot_id = math_model.model.GetBodyId("foot")
-        pos_foot = rbdl.CalcBodyToBaseCoordinates(math_model.model, math_model.state.q, foot_id, np.zeros(3), True)
+        pos_foot = rbdl.CalcBodyToBaseCoordinates(math_model.model, math_model.state.q, foot_id, np.zeros(3), True)[:2]
         pos_error = pos_foot_des - pos_foot
         # Derivative part PID
         vel_error = calc_numerical_gradient(pos_error, self.previous_pos_error, timestep)
