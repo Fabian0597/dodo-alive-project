@@ -1,32 +1,16 @@
+
 import sys
 import pathlib
-
-from motion_state_machine import MotionStateMachine
-
 basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
+sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
+
 import numpy as np
 from scipy.integrate import solve_ivp
 import math
 import os
 
-
-class State:
-    def __init__(self, q_size: int, q=None, qd=None, qdd=None):
-        self.q = q or np.zeros(q_size)
-        self.qd = qd or np.zeros(q_size)
-        self.qdd = qdd or np.zeros(q_size)
-
-    @classmethod
-    def from_q_qd_array(cls, y, q_size):
-        state = State(q_size)
-        state.q = y[:q_size]
-        state.qd = y[q_size:]
-        return state
-
-    def to_q_qd_array(self):
-        return np.concatenate((self.q, self.qd), axis=0)
+from motion_state_machine import MotionStateMachine
 
 
 class ArticulatedLegWalker:
@@ -109,7 +93,7 @@ class ArticulatedLegWalker:
 
 
 if __name__ == "__main__":
-    des_com_pos = mp.array([0,1])
+    des_com_pos = np.array([0,1])
     
     model = ArticulatedLegWalker(
         leg_model_path=basefolder + "/articulatedLeg.lua",
@@ -117,7 +101,7 @@ if __name__ == "__main__":
     )
 
     # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
-    q_init = np.array([0.0, 1.0, deg_to_rad(0.0), deg_to_rad(25.0)])
+    q_init = np.array([0.0, 1.0, np.deg2rad(0.0), np.deg2rad(25.0)])
 
     # qd: The model's initial velocity is 0.
     qd_init = np.zeros(model.dof_count)

@@ -1,17 +1,18 @@
 from typing import Tuple, Any
 
 import numpy as np
+"""
 import sys
 import pathlib
 basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
+sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
+"""
 
 from math_model import MathModel
-from motion_state_machine import State
+from phase_state import PhaseState
 
-
-class StancePhaseState(State):
+class StancePhaseState(PhaseState):
 
     def __init__(self, math_model: MathModel):
         super().__init__(math_model)

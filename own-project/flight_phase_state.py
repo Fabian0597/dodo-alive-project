@@ -2,16 +2,16 @@ import math
 from typing import Tuple, Any
 
 import numpy as np
+"""
 import sys
 import pathlib
 basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
+sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
+"""
 
-from math_model import MathModel, calc_numerical_gradient
-from motion_state_machine import State
-
-
+from math_model import calc_numerical_gradient, MathModel, State
+from phase_state import PhaseState
 class PIDController:
     """
     this class represent a PID controller with its gain values
@@ -42,7 +42,7 @@ def limit_value_to_max_abs(value, max_abs):
     return limited_value
 
 
-class FlightPhaseState(State):
+class FlightPhaseState(PhaseState):
 
     def __init__(self, math_model):
         super().__init__(math_model)
@@ -76,7 +76,7 @@ class FlightPhaseState(State):
         # Velocity adapted PI Controller
         self.max_angle_of_attack = 18  # in deg
         self.max_control_vel = 6
-        self.velocity_pid_ctr = PIDController(k_c=5, k_p=4, k_i=3.5)
+        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d = 0, k_c=5) #TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
 
         # Pose PID Controller
         self.local_leg_length_spring = 0.9

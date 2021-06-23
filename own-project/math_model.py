@@ -2,18 +2,36 @@ import math
 
 import numpy as np
 from numpy.linalg import inv
+
 import sys
 import pathlib
 basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder + '/../../rbdl-orb/build/python/')
+sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
 
-from articulated_leg_walker import WalkerState, State
 
 
 def calc_numerical_gradient(x_new, x_old, step_size):
+    if x_old is  None: # TODO. what todo if x_old was not updated yet with x --> error if x_old is None. 
+        x_old = np.zeros(np.shape(x_new))
     return (x_new - x_old) / step_size
+        
 
+class State:
+    def __init__(self, q_size: int, q=None, qd=None, qdd=None):
+        self.q = q or np.zeros(q_size)
+        self.qd = qd or np.zeros(q_size)
+        self.qdd = qdd or np.zeros(q_size)
+
+    @classmethod
+    def from_q_qd_array(cls, y, q_size):
+        state = State(q_size)
+        state.q = y[:q_size]
+        state.qd = y[q_size:]
+        return state
+
+    def to_q_qd_array(self):
+        return np.concatenate((self.q, self.qd), axis=0)
 
 class MathModel:
     """
@@ -21,10 +39,10 @@ class MathModel:
     """
 
     def __init__(self, model, des_com_pos):
-        self.state = State()
+        self.state = State(model.qdot_size)
 
         self.model = model
-        self.timestep = timestep
+        self.timestep = 1e-12
         self.des_com_pos = des_com_pos
         self.robot_mass = None
         self.jac_cog = None  # jacobianCog
@@ -34,6 +52,7 @@ class MathModel:
         self.jac_s_dot = None
         self.jac_star = None
         self.pos_com = None  # actualCom
+        self.pos_com_old = None
         self.leg_length = None
         self.leg_angle = None
         self.nullspace_s = None
@@ -74,7 +93,7 @@ class MathModel:
         Updates the center of gravity/mass
         """
         num_of_joints = len(self.model.mBodies)
-        cog_mass_weighted = np.zeros((3, 1))
+        cog_mass_weighted = np.zeros((3))
         mass_sum = 0
         for i in range(num_of_joints):
             cog_in_body = self.model.mBodies[i].mCenterOfMass
@@ -83,6 +102,16 @@ class MathModel:
             mass_sum = mass_sum + self.model.mBodies[i].mMass
 
         self.pos_com = cog_mass_weighted / mass_sum
+
+
+
+    def vel_center_of_gravity_upate(self):
+        if self.pos_com_old is not None:
+            self.vel_com = self.pos_com - self.pos_com_old
+        else:
+            self.vel_com = self.pos_com - np.zeros((np.shape(self.pos_com)))
+        self.pos_com_old = self.pos_com # TODO ist the order of calculatin com_pos, com_vel, update com_pos_old right?
+
 
     def current_leg_length_update(self):
         """
@@ -209,9 +238,12 @@ class MathModel:
 
     def spring_force_update(self):
         foot_id = self.model.GetBodyId("foot")
-        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model,self.state.q,articulatedLegModel.GetBodyId("foot"), np.zeros(3), True)
-        impactComInFoot = self.impact_com - footInBase
+        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model,self.state.q,self.model.GetBodyId("foot"), np.zeros(3), True)
         actualComInFoot = self.pos_com - footInBase
+        if self.impact_com is not None: # TODO. what todo if impactCom was not updated yet with actualcom --> error if impactCom is None. 
+            impactComInFoot = self.impact_com - footInBase
+        else:
+            impactComInFoot = actualComInFoot
         directionVector = actualComInFoot/np.linalg.norm(actualComInFoot)    
         springLegDelta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length
         self.springLegForce = self.spring_stiffness * (springLegDelta) * (directionVector)
@@ -221,6 +253,7 @@ class MathModel:
 
     def update(self):
         self.center_of_gravity_update()
+        self.vel_center_of_gravity_upate
         self.current_leg_length_update()
         self.current_leg_angle_update()
         self.spring_force_update()
