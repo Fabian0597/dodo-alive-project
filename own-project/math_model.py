@@ -5,17 +5,18 @@ from numpy.linalg import inv
 
 import sys
 import pathlib
-basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
-import rbdl
 
+basefolder = str(pathlib.Path(__file__).parent.absolute())
+sys.path.append(basefolder + '/../../rbdl-tum/build/python/')
+import rbdl
+import logging
 
 
 def calc_numerical_gradient(x_new, x_old, step_size):
-    if x_old is  None: # TODO. what todo if x_old was not updated yet with x --> error if x_old is None. 
-        x_old = np.zeros(np.shape(x_new))
+    if x_old is None:
+        return np.zeros(np.array(x_new).shape)
     return (x_new - x_old) / step_size
-        
+
 
 class State:
     def __init__(self, q_size: int, q=None, qd=None, qdd=None):
@@ -60,8 +61,8 @@ class MathModel:
         self.lambda_star = None
         self.mu_star = None
         self.p_star = None
-        self.mass_matrix = None
-        self.mass_matrix_ee = None 
+        self.mass_matrix = np.zeros((4, 4))
+        self.mass_matrix_ee = np.zeros((4, 4))
         self.b_vector = None
         self.selection_matrix = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
         self.g = np.array([0, 9.81]).transpose()
@@ -87,7 +88,7 @@ class MathModel:
 
     def get_timestep(self, timestep):
         self.timestep = timestep
-    
+
     def center_of_gravity_update(self):
         """
         Updates the center of gravity/mass
@@ -110,8 +111,7 @@ class MathModel:
             self.vel_com = self.pos_com - self.pos_com_old
         else:
             self.vel_com = self.pos_com - np.zeros((np.shape(self.pos_com)))
-        self.pos_com_old = self.pos_com # TODO ist the order of calculatin com_pos, com_vel, update com_pos_old right?
-
+        self.pos_com_old = self.pos_com  # TODO ist the order of calculatin com_pos, com_vel, update com_pos_old right?
 
     def current_leg_length_update(self):
         """
@@ -182,7 +182,7 @@ class MathModel:
         """
         update the nullspace_s Hutter paper between (4) and (5)
         """
-        mass_matrix_jac_S_lambda_s_jac_S = inv(self.mass_matrix) * self.jac_s.transpose() * self.lambda_s * self.jac_s
+        mass_matrix_jac_S_lambda_s_jac_S = inv(self.mass_matrix) @ self.jac_s.transpose() @ self.lambda_s @ self.jac_s
         identity_matrix = np.identity(np.shape(mass_matrix_jac_S_lambda_s_jac_S[0]))
         self.nullspace_s = identity_matrix - mass_matrix_jac_S_lambda_s_jac_S
 
@@ -190,7 +190,7 @@ class MathModel:
         """
         update the inertia matrix s Hutter paper between (4) and (5)
         """
-        self.lambda_s = inv(self.jac_s * inv(self.mass_matrix) * self.jac_s.transpose())
+        self.lambda_s = inv(self.jac_s @ inv(self.mass_matrix) @ self.jac_s.transpose()
 
     def lambda_star_update(self):
         """
@@ -223,9 +223,9 @@ class MathModel:
         Computes the joint space inertia matrix by using the Composite Rigid Body Algorithm
         """
         rbdl.CompositeRigidBodyAlgorithm(self.model, self.state.q, self.mass_matrix, True)
-    
+
     def mass_matrix_EE_update(self):
-        self.mass_matrix_ee = inv(self.jac_s*inv(self.mass_matrix)*self.jac_s.transpose())
+        self.mass_matrix_ee = inv(self.jac_s * inv(self.mass_matrix) * self.jac_s.transpose())
 
     def b_vector_update(self):
         """
@@ -238,35 +238,53 @@ class MathModel:
 
     def spring_force_update(self):
         foot_id = self.model.GetBodyId("foot")
-        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model,self.state.q,self.model.GetBodyId("foot"), np.zeros(3), True)
+        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3),
+                                                    True)
         actualComInFoot = self.pos_com - footInBase
-        if self.impact_com is not None: # TODO. what todo if impactCom was not updated yet with actualcom --> error if impactCom is None. 
+        if self.impact_com is not None:  # TODO. what todo if impactCom was not updated yet with actualcom --> error if impactCom is None.
             impactComInFoot = self.impact_com - footInBase
         else:
             impactComInFoot = actualComInFoot
-        directionVector = actualComInFoot/np.linalg.norm(actualComInFoot)    
+        directionVector = actualComInFoot / np.linalg.norm(actualComInFoot)
         springLegDelta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length
         self.springLegForce = self.spring_stiffness * (springLegDelta) * (directionVector)
 
     def SpaceControlForce(self):
-        self.spaceControlForce = self.lambda_star * (1 / self.robot_mass) * (self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
+        self.spaceControlForce = self.lambda_star * (1 / self.robot_mass) * (
+                    self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
 
     def update(self):
+        logging.debug("update center of gravity")
         self.center_of_gravity_update()
+        logging.debug("update vel center of gravity")
         self.vel_center_of_gravity_upate
+        logging.debug("update current leg length")
         self.current_leg_length_update()
+        logging.debug("update current leg angle")
         self.current_leg_angle_update()
+        logging.debug("update spring force")
         self.spring_force_update()
+        logging.debug("update jacobian s")
         self.jacobian_s_update()
+        logging.debug("update mass matrix")
         self.mass_matrix_update()
+        logging.debug("update mass matrix ee")
         self.mass_matrix_EE_update
+        logging.debug("update lambda s")
         self.lambda_s_update()
+        logging.debug("update nullspace s")
         self.nullspace_s_update()
+        logging.debug("update jacobian cog")
         self.jacobian_cog_update()
+        logging.debug("update jacobian star")
         self.jacobian_star_update()
+        logging.debug("update lambda star")
         self.lambda_star_update()
+        logging.debug("update b vector")
         self.b_vector_update()
+        logging.debug("update p star")
         self.p_star_update()
+        logging.debug("update mu star")
         self.mu_star_update()
+        logging.debug("update space control force")
         self.SpaceControlForce()
-

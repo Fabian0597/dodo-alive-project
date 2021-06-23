@@ -1,5 +1,6 @@
 from typing import Tuple, Any
-from math_model import MathModel
+from math_model import MathModel, State
+
 
 class PhaseState:
 
@@ -39,6 +40,8 @@ class PhaseState:
         #update math model
         self.math_model.get_timestep(delta_time)
         self.math_model.state = State.from_q_qd_array(y, self.math_model.model.dof_count)
+
+        self.math_model.update()
 
         tau_desired = self.controller_iteration(self.iteration_counter, delta_time)
 

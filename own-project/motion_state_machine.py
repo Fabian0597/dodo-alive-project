@@ -16,6 +16,7 @@ from math_model import MathModel, State
 from flight_phase_state import FlightPhaseState
 from stance_phase_state import StancePhaseState
 
+import logging
 
 
 
@@ -26,8 +27,12 @@ class MotionStateMachine:
     """
 
     def __init__(self, leg_model, des_com_pos):
+        logging.debug("Create and update math model")
         self.math_model = MathModel(leg_model, des_com_pos)
-        self.math_model.update() #TODO: where to update math model for the first time there where errors where some values of math model were used but still initialized with NONE ("typeerror-nonetype-object-is-not-subsriptable")
+        logging.debug("Update MathModel")
+        #self.math_model.update() #TODO: where to update math model for the first time there where errors where some values of math model were used but still initialized with NONE ("typeerror-nonetype-object-is-not-subsriptable")
+
+        logging.debug("Create State Phases")
         flight_state = FlightPhaseState(self.math_model)
         stance_state = StancePhaseState(self.math_model)
         self.dof_count = leg_model.qdot_size
@@ -36,6 +41,7 @@ class MotionStateMachine:
         self.states["Stance"] = stance_state
         self.active_state: State = self.states.get("Flight")
 
+        logging.debug("Create Transitions")
         self.transitions = {}
         self.transitions[flight_state] = stance_state
         self.transitions[stance_state] = flight_state

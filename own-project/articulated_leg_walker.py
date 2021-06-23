@@ -11,21 +11,37 @@ import math
 import os
 
 from motion_state_machine import MotionStateMachine
+import logging
+import sys
+
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(message)s')
+handler.setFormatter(formatter)
+root.addHandler(handler)
 
 
 class ArticulatedLegWalker:
     def __init__(self, leg_model_path, des_com_pos):
         # instance of rbdl model is loaded
         # flight model
+
+        logging.debug("Loading rbdl leg model")
         self.leg_model = rbdl.loadModel(leg_model_path)
         # stance model
+        logging.debug("Loading rbdl leg model with constraints")
         self.leg_model_constraint = rbdl.loadModel(leg_model_path)
 
+        logging.debug("init Motion State Machine")
         self.state_machine = MotionStateMachine(self.leg_model, des_com_pos)
 
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
 
+        logging.debug("set constraints")
         self.constraint = rbdl.ConstraintSet()
         foot_id = self.leg_model.GetBodyId('foot')
         y_plane = np.array([0, 1, 0], dtype=np.double)  # TODO this is not used
@@ -33,6 +49,7 @@ class ArticulatedLegWalker:
         self.constraint.AddContactConstraint(foot_id, np.zeros(3), x_plane)
         self.constraint.Bind(self.leg_model_constraint)
 
+        logging.debug("open csv file")
         self.csv = open(basefolder + '/animation.csv', 'w')
 
     def solve(self, t_init, t_final, init_state):
