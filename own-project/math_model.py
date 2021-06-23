@@ -20,11 +20,12 @@ class MathModel:
     represents the mathematical model, where all the variables of the robot leg are stored
     """
 
-    def __init__(self, model, timestep):
+    def __init__(self, model, des_com_pos):
         self.state = State()
-        self.timestep = timestep
 
         self.model = model
+        self.timestep = timestep
+        self.des_com_pos = des_com_pos
         self.robot_mass = None
         self.jac_cog = None  # jacobianCog
         self.jac_d_cog = None  # derivative of jacobian
@@ -65,6 +66,9 @@ class MathModel:
         # TODO: what is this for?
         self.impact_com = None
 
+    def get_timestep(self, timestep):
+        self.timestep = timestep
+    
     def center_of_gravity_update(self):
         """
         Updates the center of gravity/mass

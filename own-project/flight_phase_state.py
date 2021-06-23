@@ -103,7 +103,7 @@ class FlightPhaseState(State):
             self.set_forces = False
             self.set_forces_glob = True
 
-        des_pos = None  # TODO: desired_xCom
+        des_pos = self.math_model.des_com_pos
 
         # Position Controller
         vel_des = self.position_controller(self.math_model, des_pos)

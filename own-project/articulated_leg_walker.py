@@ -30,14 +30,14 @@ class State:
 
 
 class ArticulatedLegWalker:
-    def __init__(self, leg_model_path):
+    def __init__(self, leg_model_path, des_com_pos):
         # instance of rbdl model is loaded
         # flight model
         self.leg_model = rbdl.loadModel(leg_model_path)
         # stance model
         self.leg_model_constraint = rbdl.loadModel(leg_model_path)
 
-        self.state_machine = MotionStateMachine(self.leg_model)
+        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos)
 
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
@@ -109,15 +109,25 @@ class ArticulatedLegWalker:
 
 
 if __name__ == "__main__":
+    des_com_pos = mp.array([0,1])
+    
     model = ArticulatedLegWalker(
-        leg_model_path=basefolder + "/articulatedLeg.lua"
+        leg_model_path=basefolder + "/articulatedLeg.lua",
+        des_com_pos = des_com_pos
     )
 
-    t_init = 0
-    t_final_state = 2
-    init_state = State(model.dof_count,
-                       # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2)
-                       q=np.array([0.0, 1.0, math.radians(0.0), math.radians(25.0)]))
+    # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
+    q_init = np.array([0.0, 1.0, deg_to_rad(0.0), deg_to_rad(25.0)])
 
-    model.solve(t_init, t_final_state, init_state.to_q_qd_array())
+    # qd: The model's initial velocity is 0.
+    qd_init = np.zeros(model.dof_count)
+    
+    #initial y_state
+    init_state = np.concatenate((q_init, qd_init))
+
+    #initial and final time step for integrator
+    t_init = 0
+    t_final_state = 5
+
+    model.solve(t_init, t_final_state, init_state)
     model.meshup()

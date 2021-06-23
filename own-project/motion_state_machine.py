@@ -54,6 +54,8 @@ class State:
         self.iteration_counter += 1
         delta_time = self._get_delta_time(time)
 
+        self.math_model.get_timestep(delta_time)
+
         self.math_model.state = State.from_q_qd_array(y, self.dof_count)
 
         tau_desired = self.controller_iteration(self.iteration_counter, delta_time)
@@ -95,8 +97,8 @@ class MotionStateMachine:
     whether it is in stance or fight mode
     """
 
-    def __init__(self, leg_model):
-        self.math_model = MathModel(leg_model)
+    def __init__(self, leg_model, des_com_pos):
+        self.math_model = MathModel(leg_model, des_com_pos)
         flight_state = FlightPhaseState(self.math_model)
         stance_state = StancePhaseState(self.math_model)
         self.states = {}
