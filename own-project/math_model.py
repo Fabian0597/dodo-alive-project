@@ -63,7 +63,7 @@ class MathModel:
         self.p_star = None
         self.mass_matrix = np.zeros((4, 4))
         self.mass_matrix_ee = np.zeros((4, 4))
-        self.b_vector = None
+        self.b_vector = np.zeros(4)
         self.selection_matrix = np.array([[0, 0, 1, 0], [0, 0, 0, 1]])
         self.g = np.array([0, 9.81]).transpose()
         self.springLegForce = None
@@ -235,6 +235,8 @@ class MathModel:
             velocities, and accelerations. Computes inverse dynamics with the Newton-Euler Algorithm
         NonlinearEffects: Computes the coriolis forces
         """
+        print(self.state.q.shape)
+
         rbdl.NonlinearEffects(self.model, self.state.q, self.state.qd, self.b_vector)
 
     def spring_force_update(self):
