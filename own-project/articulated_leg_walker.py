@@ -110,7 +110,7 @@ class ArticulatedLegWalker:
 
 
 if __name__ == "__main__":
-    des_com_pos = np.array([0,1])
+    des_com_pos = 1  # one dimensional position
     
     model = ArticulatedLegWalker(
         leg_model_path=basefolder + "/articulatedLeg.lua",

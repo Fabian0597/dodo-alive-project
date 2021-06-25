@@ -34,6 +34,7 @@ class State:
     def to_q_qd_array(self):
         return np.concatenate((self.q, self.qd), axis=0)
 
+
 class MathModel:
     """
     represents the mathematical model, where all the variables of the robot leg are stored
@@ -43,7 +44,7 @@ class MathModel:
         self.state = State(model.qdot_size)
 
         self.model = model
-        self.timestep = 1e-12
+        self.timestep = None
         self.des_com_pos = des_com_pos
         self.robot_mass = None
         self.jac_cog = None  # jacobianCog
@@ -53,7 +54,7 @@ class MathModel:
         self.jac_s_dot = None
         self.jac_star = None
         self.pos_com = None  # actualCom
-        self.pos_com_old = None
+        self.pos_com_old = np.zeros((np.shape(self.pos_com)))
         self.leg_length = None
         self.leg_angle = None
         self.nullspace_s = None
@@ -86,9 +87,6 @@ class MathModel:
         # TODO: what is this for?
         self.impact_com = None
 
-    def get_timestep(self, timestep):
-        self.timestep = timestep
-
     def center_of_gravity_update(self):
         """
         Updates the center of gravity/mass
@@ -104,13 +102,11 @@ class MathModel:
 
         self.pos_com = (cog_mass_weighted / mass_sum)[:2]
 
-
-
-    def vel_center_of_gravity_upate(self):
+    def vel_center_of_gravity_update(self, timestep):
         if self.pos_com_old is not None:
-            self.vel_com = self.pos_com - self.pos_com_old
+            self.vel_com = calc_numerical_gradient(self.pos_com, self.pos_com_old, timestep)
         else:
-            self.vel_com = self.pos_com - np.zeros((np.shape(self.pos_com)))
+            self.vel_com = np.zeros((np.shape(self.pos_com)))
         self.pos_com_old = self.pos_com  # TODO ist the order of calculatin com_pos, com_vel, update com_pos_old right?
 
     def current_leg_length_update(self):
@@ -148,7 +144,7 @@ class MathModel:
             mass_sum += body_i.mMass
             jac_cog_sum += jac_cog_i
 
-        self.jac_cog = (jac_cog_sum / mass_sum)[:2,:self.model.dof_count]
+        self.jac_cog = (jac_cog_sum / mass_sum)[:2, :self.model.dof_count]
         self.robot_mass = mass_sum
 
         jac_dot_cog = np.zeros((3, self.model.dof_count))
@@ -161,12 +157,13 @@ class MathModel:
         jac_base = np.zeros((6, self.model.dof_count))
         jac_foot = np.zeros((6, self.model.dof_count))
 
-        pre_jac_s = self.jac_s
+        pre_jac_s = self.jac_s  # TODO: why does not make sense -> gradient always zero
 
-        rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base,True)
+        rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base,
+                               True)
         rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3), jac_foot, True)
-        self.jac_base_s = jac_foot[:2,:self.model.dof_count] - jac_base[:2,:self.model.dof_count]
-        self.jac_s = jac_foot[:2,:self.model.dof_count]
+        self.jac_base_s = jac_foot[:2, :self.model.dof_count] - jac_base[:2, :self.model.dof_count]
+        self.jac_s = jac_foot[:2, :self.model.dof_count]
         self.jac_s_dot = calc_numerical_gradient(self.jac_s, pre_jac_s, self.timestep)
 
     def jacobian_star_update(self):
@@ -207,7 +204,7 @@ class MathModel:
         """
         self.p_star = self.lambda_star @ self.jac_cog @ inv(self.mass_matrix) @ \
                       self.nullspace_s.transpose() @ np.concatenate((self.g, np.zeros(2)))
-                        # TODO is this correct? concatenating with zeros
+        # TODO is this correct? concatenating with zeros
 
     def mu_star_update(self):
         """
@@ -228,7 +225,7 @@ class MathModel:
         rbdl.CompositeRigidBodyAlgorithm(self.model, self.state.q, self.mass_matrix, True)
 
     def mass_matrix_EE_update(self):
-        self.mass_matrix_ee = inv(self.jac_s * inv(self.mass_matrix) * self.jac_s.transpose())
+        self.mass_matrix_ee = inv(self.jac_s @ inv(self.mass_matrix) @ self.jac_s.transpose())
 
     def b_vector_update(self):
         """
@@ -254,13 +251,18 @@ class MathModel:
 
     def SpaceControlForce(self):
         self.spaceControlForce = self.lambda_star * (1 / self.robot_mass) * (
-                    self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
+                self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
+
+    def new_timestep_update(self, timestep):
+        self.timestep = timestep
+        self.update()
+        logging.debug("update vel center of gravity")
+        self.vel_center_of_gravity_update(timestep)
+
 
     def update(self):
         logging.debug("update center of gravity")
         self.center_of_gravity_update()
-        logging.debug("update vel center of gravity")
-        self.vel_center_of_gravity_upate
         logging.debug("update current leg length")
         self.current_leg_length_update()
         logging.debug("update current leg angle")
@@ -272,7 +274,7 @@ class MathModel:
         logging.debug("update mass matrix")
         self.mass_matrix_update()
         logging.debug("update mass matrix ee")
-        self.mass_matrix_EE_update
+        self.mass_matrix_EE_update()
         logging.debug("update lambda s")
         self.lambda_s_update()
         logging.debug("update nullspace s")

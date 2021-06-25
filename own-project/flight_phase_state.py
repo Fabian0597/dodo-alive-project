@@ -2,6 +2,8 @@ import math
 from typing import Tuple, Any
 
 import numpy as np
+import rbdl
+
 """
 import sys
 import pathlib
@@ -81,7 +83,7 @@ class FlightPhaseState(PhaseState):
         # Pose PID Controller
         self.local_leg_length_spring = 0.9
         self.i_max_control = 0.5 * np.ones((2, 1))
-        self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros((2, 1)))
+        self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
 
         self.previous_pos_error = np.zeros((2, 1))
         self.set_forces = True
@@ -98,12 +100,14 @@ class FlightPhaseState(PhaseState):
         """
 
         # DISTURBED
+        # do we need this
         # TODO contact_nr
-        if abs(self.math_model.vel_com[1]) < 0.01 and contact_nr == 3 and self.set_forces:
-            self.set_forces = False
-            self.set_forces_glob = True
+        #if abs(self.math_model.vel_com[1]) < 0.01 and self.set_forces:  # and contact_nr == 3 :
+        #    self.set_forces = False
+        #    self.set_forces_glob = True
 
         des_pos = self.math_model.des_com_pos
+        print("desired pos: %s" % des_pos)
 
         # Position Controller
         vel_des = self.position_controller(self.math_model, des_pos)
@@ -115,8 +119,10 @@ class FlightPhaseState(PhaseState):
         xdd = self.pose_controller(self.math_model, timestep, angle_of_attack)
 
         #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
-        pinv_jac_base_s = np.linalg.pinv(np.linalg.qr(self.math_model.jac_base_s))
-        tau_flight = self.math_model.mass_matrix * pinv_jac_base_s * xdd
+        #TODO why do we need QR decomposition here?
+        #q, r = np.linalg.qr(self.math_model.jac_base_s)
+        pinv_jac_base_s = np.linalg.pinv(self.math_model.jac_base_s)
+        tau_flight = self.math_model.mass_matrix @ pinv_jac_base_s @ xdd
 
         self.math_model.update()
         self.math_model.impact = False
@@ -125,8 +131,9 @@ class FlightPhaseState(PhaseState):
 
     def pose_controller(self, math_model, timestep, angle_of_attack):
         # POSE/LEG CONTROLLER
-        pos_foot_des = np.zeros((2, 1))
-        angle_of_attack_rad = math.radians(angle_of_attack)
+        pos_foot_des = np.zeros(2)
+        print(angle_of_attack)
+        angle_of_attack_rad = np.deg2rad(angle_of_attack)
         pos_foot_des[0] = math_model.pos_com[0] + math.sin(angle_of_attack_rad) * self.local_leg_length_spring
         pos_foot_des[1] = math_model.pos_com[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
         # Proportional part PID
@@ -140,6 +147,7 @@ class FlightPhaseState(PhaseState):
         self.pose_pid_ctr.i_error += pos_error
         self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error, self.i_max_control)
         # PID control
+        print(math_model.mass_matrix_ee)
         mass_inv = np.linalg.inv(math_model.mass_matrix_ee)
         xdd = mass_inv * self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=timestep,
                                                                 d_error=vel_error)
@@ -166,10 +174,10 @@ class FlightPhaseState(PhaseState):
 
         self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error, self.max_control_vel)
         vel_com_x = math_model.vel_com[0]  # velocity of center of mass in x direction
-        if iteration_counter % 5 == 0:
+        if iteration_counter % 5 == 0 or not math_model.angle_of_attack:
             # PID
             math_model.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=vel_com_x)
-        math_model.angle_of_attack = limit_value_to_max_abs(math_model.angle_of_attack, self.max_angle_of_attack)
+            math_model.angle_of_attack = limit_value_to_max_abs(math_model.angle_of_attack, self.max_angle_of_attack)
         return math_model.angle_of_attack
 
     def position_controller(self, math_model, des_pos):
