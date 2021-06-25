@@ -182,7 +182,8 @@ class MathModel:
         update the nullspace_s Hutter paper between (4) and (5)
         """
         mass_matrix_jac_S_lambda_s_jac_S = inv(self.mass_matrix) @ self.jac_s.transpose() @ self.lambda_s @ self.jac_s
-        identity_matrix = np.identity(np.shape(mass_matrix_jac_S_lambda_s_jac_S[0]))
+        size = np.shape(mass_matrix_jac_S_lambda_s_jac_S[0])[0]
+        identity_matrix = np.identity(size)
         self.nullspace_s = identity_matrix - mass_matrix_jac_S_lambda_s_jac_S
 
     def lambda_s_update(self):
