@@ -173,9 +173,9 @@ class MathModel:
         """
         update the nullspace_s in Hutter paper (8)
         """
-        actuation_matrix_nullspace_s = self.selection_matrix * self.nullspace_s
-        self.jac_star = self.jac_cog * inv(self.mass_matrix) * actuation_matrix_nullspace_s.transpose() * inv(
-            actuation_matrix_nullspace_s * inv(self.mass_matrix) * actuation_matrix_nullspace_s.transpose())
+        actuation_matrix_nullspace_s = self.selection_matrix @ self.nullspace_s
+        self.jac_star = self.jac_cog @ inv(self.mass_matrix) @ actuation_matrix_nullspace_s.transpose() @ inv(
+            actuation_matrix_nullspace_s @ inv(self.mass_matrix) @ actuation_matrix_nullspace_s.transpose())
 
     def nullspace_s_update(self):
         """
