@@ -238,7 +238,7 @@ class MathModel:
 
     def spring_force_update(self):
         foot_id = self.model.GetBodyId("foot")
-        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3),
+        footInBase = rbdl.CalcBodyToBaseCoordinates(self.model, self.state.q, foot_id, np.zeros(3),
                                                     True)[:2]
         actualComInFoot = self.pos_com - footInBase
         if self.impact_com is not None:  # TODO. what todo if impactCom was not updated yet with actualcom --> error if impactCom is None.

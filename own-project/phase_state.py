@@ -45,8 +45,6 @@ class PhaseState:
 
         self.math_model.new_timestep_update(delta_time)
 
-        self.math_model.update()
-
         tau_desired = self.controller_iteration(self.iteration_counter, delta_time)
 
         state_derivative = self._forward_dynamics(tau_desired)

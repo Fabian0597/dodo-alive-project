@@ -1,6 +1,7 @@
 from typing import Tuple, Any
 
 import numpy as np
+
 """
 import sys
 import pathlib
@@ -11,6 +12,7 @@ import rbdl
 
 from math_model import MathModel
 from phase_state import PhaseState
+
 
 class StancePhaseState(PhaseState):
 
@@ -56,7 +58,7 @@ class StancePhaseState(PhaseState):
             nullspace_s = self.math_model.nullspace_s
             matrix_diff = jac_cog.transpose() @ jac_cog - nullspace_s.transpose() @ jac_cog.transpose() @ jac_cog @ nullspace_s
             vel_com_diff = qd.transpose() @ matrix_diff @ qd
-            delta_e_kin = abs(0.5 * self.math_model.robot_mass * vel_com_diff)
+            delta_e_kin = abs(0.5 * mass * vel_com_diff)
 
             self.math_model.leg_length_delta = np.sqrt(2 * delta_e_kin / self.math_model.spring_stiffness)
 
@@ -65,7 +67,7 @@ class StancePhaseState(PhaseState):
         # new generalized velocity after impact
         self.math_model.state.qd = nullspace_s @ self.math_model.state.qd
 
-        tau_stance = self.math_model.jac_star.transpose() * self.math_model.spaceControlForce
+        tau_stance = self.math_model.jac_star.transpose() @ self.math_model.spaceControlForce
 
         return tau_stance
 
@@ -78,6 +80,3 @@ class StancePhaseState(PhaseState):
         t_init = solver_result.t[-1]
         solver_state = solver_result.y.T[-1]
         return solver_state, t_init
-
-
-
