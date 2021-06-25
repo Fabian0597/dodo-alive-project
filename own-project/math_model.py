@@ -197,8 +197,9 @@ class MathModel:
         update the inertia matrix star Hutter paper (9)
         """
         # TODO: what is the normal J equal to Jcog like in C++ implementation?
-        actuation_matrix_nullspace_s = self.selection_matrix * self.nullspace_s
-        self.lambda_star = inv(self.jac_cog * inv(self.mass_matrix) * actuation_matrix_nullspace_s * self.jac_star)
+        actuation_matrix_nullspace_s = self.selection_matrix @ self.nullspace_s
+        self.lambda_star = inv(self.jac_cog @ inv(self.mass_matrix) @
+                               actuation_matrix_nullspace_s.transpose() @ self.jac_star.transpose())
 
     def mu_star_update(self):
         """
