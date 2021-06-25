@@ -1,7 +1,7 @@
 from typing import Tuple, Any
 
 import rbdl
-
+import numpy as np
 from math_model import MathModel, State
 
 
@@ -60,14 +60,13 @@ class PhaseState:
         # calculate qdd from q, qd, tau, f_ext for the model with the forward dynamics
         # rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, state.q, state.qd, state.tau,
         #   self.constraints[self.discrete_state], state.qdd) --> this is just done during stance
-        print("tau_shape: %s" % tau_desired.shape)
         rbdl.ForwardDynamics(self.math_model.model, self.math_model.state.q, self.math_model.state.qd,
                              tau_desired, self.math_model.state.qdd)
 
         # return res = [qd, qdd] from the forward dynamics which can then be given to the solver to be integrated by the ivp_solver
-        state = np.zeros(2 * self.dof_count)
-        state[:self.dof_count] = self.math_model.state.qd
-        state[self.dof_count:] = self.math_model.state.qdd
+        state = np.zeros(2 * self.math_model.model.dof_count)
+        state[:self.math_model.model.dof_count] = self.math_model.state.qd
+        state[self.math_model.model.dof_count:] = self.math_model.state.qdd
         return state
 
     def _get_delta_time(self, time):

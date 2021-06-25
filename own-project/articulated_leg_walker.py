@@ -35,9 +35,6 @@ class ArticulatedLegWalker:
         logging.debug("Loading rbdl leg model with constraints")
         self.leg_model_constraint = rbdl.loadModel(leg_model_path)
 
-        logging.debug("init Motion State Machine")
-        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos)
-
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
 
@@ -48,6 +45,9 @@ class ArticulatedLegWalker:
         x_plane = np.array([1, 0, 0], dtype=np.double)
         self.constraint.AddContactConstraint(foot_id, np.zeros(3), x_plane)
         self.constraint.Bind(self.leg_model_constraint)
+
+        logging.debug("init Motion State Machine")
+        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.constraint)
 
         logging.debug("open csv file")
         self.csv = open(basefolder + '/animation.csv', 'w')

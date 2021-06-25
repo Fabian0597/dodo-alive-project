@@ -47,7 +47,7 @@ def limit_value_to_max_abs(value, max_abs):
 
 class FlightPhaseState(PhaseState):
 
-    def __init__(self, math_model):
+    def __init__(self, math_model, constraint):
         super().__init__(math_model)
 
         def touchdown_event(time, y):
@@ -59,16 +59,16 @@ class FlightPhaseState(PhaseState):
             :param y: generalized coordinates and their derivative y=[q, qd].transpose()
             :return:
             """
-            self.math_model.state.q = y[:self.dof_count]
-            self.math_model.state.qd = y[self.dof_count:]
+            self.math_model.state.q = y[:self.math_model.model.dof_count]
+            self.math_model.state.qd = y[self.math_model.model.dof_count:]
 
             # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
             foot_id = self.math_model.model.GetBodyId('foot')
-            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.leg_state.q, self.leg_model, np.zeros(3), True)
+            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.math_model.state.q, foot_id, np.zeros(3), True)[:2]
             return foot_pos[1]
 
         touchdown_event.terminal = True
-
+        
         self.events = [touchdown_event]
 
         # Position PI Controller
@@ -90,6 +90,8 @@ class FlightPhaseState(PhaseState):
         self.set_forces = True
         self.set_forces_glob = False
 
+        self.constraint = constraint
+
     def controller_iteration(self, iteration_counter: int, timestep: float):
         """
         performs iteration for the controller of the flight phase.
@@ -108,7 +110,6 @@ class FlightPhaseState(PhaseState):
         #    self.set_forces_glob = True
 
         des_pos = self.math_model.des_com_pos
-        print("desired pos: %s" % des_pos)
 
         # Position Controller
         vel_des = self.position_controller(self.math_model, des_pos)
@@ -213,10 +214,10 @@ class FlightPhaseState(PhaseState):
         solver_state = solver_result.y.T[-1]
         # Calculation of change of velocity through impact
         # qd_minus is the generalized velocity before and qd_plus the generalized velocity after the impact
-        q_minus = solver_state[:self.dof_count]  # first half of state vector is q
-        qd_minus = solver_state[self.dof_count:]  # second half of state vector is qd
-        qd_plus = np.ones(self.dof_count)
-        rbdl.ComputeConstraintImpulsesDirect(self.leg_model, q_minus, qd_minus, self.constraints, qd_plus)
+        q_minus = solver_state[:self.math_model.model.dof_count]  # first half of state vector is q
+        qd_minus = solver_state[self.math_model.model.dof_count:]  # second half of state vector is qd
+        qd_plus = np.ones(self.math_model.model.dof_count)
+        rbdl.ComputeConstraintImpulsesDirect(self.math_model.model, q_minus, qd_minus, self.constraint, qd_plus)
         # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
-        solver_state[self.dof_count:] = qd_plus
+        solver_state[self.math_model.model.dof_count:] = qd_plus
         return solver_state, t_impact
