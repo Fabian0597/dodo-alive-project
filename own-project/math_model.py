@@ -201,6 +201,14 @@ class MathModel:
         self.lambda_star = inv(self.jac_cog @ inv(self.mass_matrix) @
                                actuation_matrix_nullspace_s.transpose() @ self.jac_star.transpose())
 
+    def p_star_update(self):
+        """
+        update the p star Hutter paper (11)
+        """
+        self.p_star = self.lambda_star @ self.jac_cog @ inv(self.mass_matrix) @ \
+                      self.nullspace_s.transpose() @ np.concatenate((self.g, np.zeros(2)))
+                        # TODO is this correct? concatenating with zeros
+
     def mu_star_update(self):
         """
         update the mue star Hutter paper (10)
@@ -212,12 +220,6 @@ class MathModel:
         mue_star_3 = self.lambda_star * self.jac_cog * inv(
             self.mass_matrix) * self.jac_s.transpose() * self.lambda_s * self.jac_s_dot * self.state.qd
         self.mu_star = mue_star_1 - mue_star_2 + mue_star_3
-
-    def p_star_update(self):
-        """
-        update the p star Hutter paper (11)
-        """
-        self.p_star = self.lambda_star * self.jac_cog * inv(self.mass_matrix) * self.nullspace_s.transpose() * self.g
 
     def mass_matrix_update(self):
         """
@@ -235,8 +237,6 @@ class MathModel:
             velocities, and accelerations. Computes inverse dynamics with the Newton-Euler Algorithm
         NonlinearEffects: Computes the coriolis forces
         """
-        print(self.state.q.shape)
-
         rbdl.NonlinearEffects(self.model, self.state.q, self.state.qd, self.b_vector)
 
     def spring_force_update(self):
