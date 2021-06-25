@@ -14,7 +14,7 @@ import logging
 
 def calc_numerical_gradient(x_new, x_old, step_size):
     if x_old is None:
-        return np.zeros(np.array(x_new).shape)
+        return np.zeros(np.shape(x_new))
     return (x_new - x_old) / step_size
 
 
@@ -48,7 +48,8 @@ class MathModel:
         self.des_com_pos = des_com_pos
         self.robot_mass = None
         self.jac_cog = None  # jacobianCog
-        self.jac_d_cog = None  # derivative of jacobian
+        self.pre_jac_cog = None
+        self.jac_cog_dot = None  # derivative of jacobian
         self.jac_s = None
         self.jac_base_s = None
         self.jac_s_dot = None
@@ -146,12 +147,17 @@ class MathModel:
 
         self.jac_cog = (jac_cog_sum / mass_sum)[:2, :self.model.dof_count]
         self.robot_mass = mass_sum
-
+        """
         jac_dot_cog = np.zeros((3, self.model.dof_count))
         floatingbase_id = self.model.GetBodyId("floatingBase")
         rbdl.CalcPointJacobian(self.model, self.state.q, floatingbase_id, np.zeros(3), jac_dot_cog, True)
         self.jac_d_cog = jac_dot_cog[:2, :]
         # TODO: numerical? jacobianCogDot = calc_gradient(jacobianCog,jacobianCogOld,timeStep);
+        """
+
+        self.jac_cog_dot = calc_numerical_gradient(self.jac_cog, self.pre_jac_cog, self.timestep)
+        self.pre_jac_cog = self.jac_cog
+
 
     def jacobian_s_update(self):
         jac_base = np.zeros((6, self.model.dof_count))
@@ -213,7 +219,7 @@ class MathModel:
         # TODO self.qd, self.b_vector is still missing
         mue_star_1 = self.lambda_star @ self.jac_cog @ inv(
             self.mass_matrix) @ self.nullspace_s.transpose() @ self.b_vector
-        mue_star_2 = self.lambda_star @ self.jac_d_cog @ self.state.qd
+        mue_star_2 = self.lambda_star @ self.jac_cog_dot @ self.state.qd
         mue_star_3 = self.lambda_star @ self.jac_cog @ inv(
             self.mass_matrix) @ self.jac_s.transpose() @ self.lambda_s @ self.jac_s_dot @ self.state.qd
         self.mu_star = mue_star_1 - mue_star_2 + mue_star_3

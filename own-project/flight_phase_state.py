@@ -35,6 +35,7 @@ class PIDController:
     def control_function(self, p_error, d_error=0, c_error=0, scale_i_error=1):
         output = self.k_p * p_error + self.k_i * scale_i_error * self.i_error + self.k_d * d_error
         output += self.k_c * c_error
+  
         return output
 
 
@@ -82,10 +83,10 @@ class FlightPhaseState(PhaseState):
 
         # Pose PID Controller
         self.local_leg_length_spring = 0.9
-        self.i_max_control = 0.5 * np.ones((2, 1))
+        self.i_max_control = 0.5 * np.ones((2))
         self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
 
-        self.previous_pos_error = np.zeros((2, 1))
+        self.previous_pos_error = None
         self.set_forces = True
         self.set_forces_glob = False
 
@@ -122,6 +123,7 @@ class FlightPhaseState(PhaseState):
         #TODO why do we need QR decomposition here?
         #q, r = np.linalg.qr(self.math_model.jac_base_s)
         pinv_jac_base_s = np.linalg.pinv(self.math_model.jac_base_s)
+        
         tau_flight = self.math_model.mass_matrix @ pinv_jac_base_s @ xdd
 
         self.math_model.update()
@@ -132,24 +134,28 @@ class FlightPhaseState(PhaseState):
     def pose_controller(self, math_model, timestep, angle_of_attack):
         # POSE/LEG CONTROLLER
         pos_foot_des = np.zeros(2)
-        print(angle_of_attack)
         angle_of_attack_rad = np.deg2rad(angle_of_attack)
         pos_foot_des[0] = math_model.pos_com[0] + math.sin(angle_of_attack_rad) * self.local_leg_length_spring
         pos_foot_des[1] = math_model.pos_com[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
+
         # Proportional part PID
         foot_id = math_model.model.GetBodyId("foot")
         pos_foot = rbdl.CalcBodyToBaseCoordinates(math_model.model, math_model.state.q, foot_id, np.zeros(3), True)[:2]
+
         pos_error = pos_foot_des - pos_foot
         # Derivative part PID
         vel_error = calc_numerical_gradient(pos_error, self.previous_pos_error, timestep)
         self.previous_pos_error = pos_error
         # Integral part PID
         self.pose_pid_ctr.i_error += pos_error
+        
         self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error, self.i_max_control)
+
         # PID control
-        print(math_model.mass_matrix_ee)
+
+
         mass_inv = np.linalg.inv(math_model.mass_matrix_ee)
-        xdd = mass_inv * self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=timestep,
+        xdd = mass_inv @ self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=timestep,
                                                                 d_error=vel_error)
         return xdd
 
