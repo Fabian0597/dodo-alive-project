@@ -154,7 +154,7 @@ class MathModel:
         jac_dot_cog = np.zeros((3, self.model.dof_count))
         floatingbase_id = self.model.GetBodyId("floatingBase")
         rbdl.CalcPointJacobian(self.model, self.state.q, floatingbase_id, np.zeros(3), jac_dot_cog, True)
-        self.jac_d_cog = jac_dot_cog
+        self.jac_d_cog = jac_dot_cog[:2, :]
         # TODO: numerical? jacobianCogDot = calc_gradient(jacobianCog,jacobianCogOld,timeStep);
 
     def jacobian_s_update(self):
@@ -214,11 +214,11 @@ class MathModel:
         update the mue star Hutter paper (10)
         """
         # TODO self.qd, self.b_vector is still missing
-        mue_star_1 = self.lambda_star * self.jac_cog * inv(
-            self.mass_matrix) * self.nullspace_s.transpose() * self.b_vector
-        mue_star_2 = self.lambda_star * self.jac_d_cog * self.state.qd
-        mue_star_3 = self.lambda_star * self.jac_cog * inv(
-            self.mass_matrix) * self.jac_s.transpose() * self.lambda_s * self.jac_s_dot * self.state.qd
+        mue_star_1 = self.lambda_star @ self.jac_cog @ inv(
+            self.mass_matrix) @ self.nullspace_s.transpose() @ self.b_vector
+        mue_star_2 = self.lambda_star @ self.jac_d_cog @ self.state.qd
+        mue_star_3 = self.lambda_star @ self.jac_cog @ inv(
+            self.mass_matrix) @ self.jac_s.transpose() @ self.lambda_s @ self.jac_s_dot @ self.state.qd
         self.mu_star = mue_star_1 - mue_star_2 + mue_star_3
 
     def mass_matrix_update(self):
