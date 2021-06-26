@@ -16,8 +16,8 @@ from phase_state import PhaseState
 
 class StancePhaseState(PhaseState):
 
-    def __init__(self, math_model: MathModel):
-        super().__init__(math_model)
+    def __init__(self, math_model: MathModel, constraint):
+        super().__init__(math_model, constraint)
 
         def jumping_event(time, y):
             """
@@ -65,11 +65,13 @@ class StancePhaseState(PhaseState):
             self.math_model.update()
 
         # new generalized velocity after impact
-        self.math_model.state.qd = nullspace_s @ self.math_model.state.qd
+        self.math_model.state.qd = self.math_model.nullspace_s @ self.math_model.state.qd
 
         tau_stance = self.math_model.jac_star.transpose() @ self.math_model.spaceControlForce
 
-        return tau_stance
+        print("tau_stance: %s" % tau_stance.flatten())  # why is this matrix?
+
+        return tau_stance.flatten()
 
     def transfer_to_next_state(self, solver_result) -> Tuple[Any, Any]:
         """

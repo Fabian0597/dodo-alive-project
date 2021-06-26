@@ -31,23 +31,24 @@ class ArticulatedLegWalker:
 
         logging.debug("Loading rbdl leg model")
         self.leg_model = rbdl.loadModel(leg_model_path)
-        # stance model
-        logging.debug("Loading rbdl leg model with constraints")
-        self.leg_model_constraint = rbdl.loadModel(leg_model_path)
 
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
 
         logging.debug("set constraints")
-        self.constraint = rbdl.ConstraintSet()
-        foot_id = self.leg_model.GetBodyId('foot')
-        y_plane = np.array([0, 1, 0], dtype=np.double)  # TODO this is not used
         x_plane = np.array([1, 0, 0], dtype=np.double)
-        self.constraint.AddContactConstraint(foot_id, np.zeros(3), x_plane)
-        self.constraint.Bind(self.leg_model_constraint)
+        y_plane = np.array([0, 1, 0], dtype=np.double)
+        # stance phase
+        self.constraintSetStance = rbdl.ConstraintSet()
+        self.constraintSetStance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), x_plane)
+        self.constraintSetStance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), y_plane)
+        self.constraintSetStance.Bind(self.leg_model)
+        # flight phase
+        self.emptySet = rbdl.ConstraintSet()
+        self.emptySet.Bind(self.leg_model)
 
         logging.debug("init Motion State Machine")
-        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.constraint)
+        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance)
 
         logging.debug("open csv file")
         self.csv = open(basefolder + '/animation.csv', 'w')
@@ -61,7 +62,6 @@ class ArticulatedLegWalker:
         :param des_position: desired position target for the robot
         :param init_state: initial state of the robot's leg (q, qd)
         """
-        active_state = self.state_machine.active_state
         state = init_state
 
         while t_init < t_final:
@@ -72,10 +72,10 @@ class ArticulatedLegWalker:
             # it solves the ode until it reaches the event touchdown_event(y,t)=0
             # so the foot hits the ground and has (y height 0)
             solver = solve_ivp(
-                fun=active_state.solver_function,
+                fun=self.state_machine.active_state.solver_function,
                 t_span=[t_init, t_final],
                 y0=state,
-                events=active_state.events
+                events=self.state_machine.active_state.events
             )
 
             # iterate over internal states saved by the solver during integration
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     )
 
     # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
-    q_init = np.array([0.0, 1.0, np.deg2rad(0.0), np.deg2rad(25.0)])
+    q_init = np.array([0.0, 3.0, np.deg2rad(0.0), np.deg2rad(25.0)])
 
     # qd: The model's initial velocity is 0.
     qd_init = np.zeros(model.dof_count)
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     #initial and final time step for integrator
     t_init = 0
-    t_final_state = 5
+    t_final_state = 0.59
 
     model.solve(t_init, t_final_state, init_state)
     model.meshup()

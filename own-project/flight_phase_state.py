@@ -53,7 +53,7 @@ def limit_value_to_max_abs(value, max_abs):
 class FlightPhaseState(PhaseState):
 
     def __init__(self, math_model, constraint):
-        super().__init__(math_model)
+        super().__init__(math_model, constraint)
 
         def touchdown_event(time, y):
             """
@@ -84,7 +84,7 @@ class FlightPhaseState(PhaseState):
         # Velocity adapted PI Controller
         self.max_angle_of_attack = 18  # in deg
         self.max_control_vel = 6
-        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d = 0, k_c=5) #TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
+        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d=0, k_c=5) #TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
 
         # Pose PID Controller
         self.local_leg_length_spring = 0.9
@@ -94,8 +94,6 @@ class FlightPhaseState(PhaseState):
         self.previous_pos_error = None
         self.set_forces = True
         self.set_forces_glob = False
-
-        self.constraint = constraint
 
     def controller_iteration(self, iteration_counter: int, timestep: float):
         """
@@ -134,6 +132,10 @@ class FlightPhaseState(PhaseState):
 
         self.math_model.update()
         self.math_model.impact = False
+
+        tau_flight = np.array([0, 0, 10, 0.1])
+
+        print("tau_flight: %s" % tau_flight)
 
         return tau_flight
 

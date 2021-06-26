@@ -12,11 +12,12 @@ from math_model import MathModel, State
 
 class PhaseState:
 
-    def __init__(self, math_model: MathModel):
+    def __init__(self, math_model: MathModel, constraint):
         self.iteration_counter = 0
         self.last_timestep = None
         self.events = None
         self.math_model = math_model
+        self.constraint = constraint
 
     def controller_iteration(self, iteration_counter: int, timestep: float):
         """
@@ -64,8 +65,8 @@ class PhaseState:
         # calculate qdd from q, qd, tau, f_ext for the model with the forward dynamics
         # rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, state.q, state.qd, state.tau,
         #   self.constraints[self.discrete_state], state.qdd) --> this is just done during stance
-        rbdl.ForwardDynamics(self.math_model.model, self.math_model.state.q, self.math_model.state.qd,
-                             tau_desired, self.math_model.state.qdd)
+        rbdl.ForwardDynamicsConstraintsDirect(self.math_model.model, self.math_model.state.q, self.math_model.state.qd,
+                             tau_desired, self.constraint, self.math_model.state.qdd)
 
         # return res = [qd, qdd] from the forward dynamics which can then be given to the solver to be integrated by the ivp_solver
         state = np.zeros(2 * self.math_model.model.dof_count)
