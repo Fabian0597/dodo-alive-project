@@ -49,13 +49,14 @@ class MathModel:
         self.robot_mass = None
         self.jac_cog = None  # jacobianCog
         self.pre_jac_cog = None
-        self.jac_cog_dot = None  # derivative of jacobian
+        self.jac_cog_dot = np.zeros((2,self.model.dof_count))
         self.jac_s = None
+        self.pre_jac_s = None
         self.jac_base_s = None
-        self.jac_s_dot = None
+        self.jac_s_dot = np.zeros((2,self.model.dof_count))
         self.jac_star = None
         self.pos_com = None  # actualCom
-        self.pos_com_old = np.zeros((np.shape(self.pos_com)))
+        self.pos_com_old = None#np.zeros((np.shape(self.pos_com)))
         self.leg_length = None
         self.leg_angle = None
         self.nullspace_s = None
@@ -73,7 +74,7 @@ class MathModel:
 
         # flight_phase TODO necessary to be in model
         self.leg_spring_delta = None  # = springLegDelta
-        self.leg_length_delta = 0  # = deltaLegLength TODO what is the difference
+        self.leg_length_delta = 0  # = deltaLegLength TODO is calculated in stance phase but what is the difference with leg_spring_delta=
 
         self.vel_com = None  # velocity of the center of gravity
 
@@ -155,7 +156,9 @@ class MathModel:
         # TODO: numerical? jacobianCogDot = calc_gradient(jacobianCog,jacobianCogOld,timeStep);
         """
 
-        self.jac_cog_dot = calc_numerical_gradient(self.jac_cog, self.pre_jac_cog, self.timestep)
+    def jacobian_cog_dot_update(self, timestep):
+        if self.pre_jac_cog is not None:
+            self.jac_cog_dot = calc_numerical_gradient(self.jac_cog, self.pre_jac_cog, timestep)
         self.pre_jac_cog = self.jac_cog
 
 
@@ -163,14 +166,17 @@ class MathModel:
         jac_base = np.zeros((6, self.model.dof_count))
         jac_foot = np.zeros((6, self.model.dof_count))
 
-        pre_jac_s = self.jac_s  # TODO: why does not make sense -> gradient always zero
-
         rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("floatingBase"), np.zeros(3), jac_base,
                                True)
         rbdl.CalcPointJacobian(self.model, self.state.q, self.model.GetBodyId("foot"), np.zeros(3), jac_foot, True)
         self.jac_base_s = jac_foot[:2, :self.model.dof_count] - jac_base[:2, :self.model.dof_count]
         self.jac_s = jac_foot[:2, :self.model.dof_count]
-        self.jac_s_dot = calc_numerical_gradient(self.jac_s, pre_jac_s, self.timestep)
+
+
+    def jacobian_s_dot_update(self, timestep):
+        if self.pre_jac_s is not None:
+            self.jac_s_dot = calc_numerical_gradient(self.jac_s, self.pre_jac_s, timestep)
+        self.pre_jac_s = self.jac_s
 
     def jacobian_star_update(self):
         """
@@ -252,7 +258,7 @@ class MathModel:
         else:
             impactComInFoot = actualComInFoot
         directionVector = actualComInFoot / np.linalg.norm(actualComInFoot)
-        springLegDelta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length
+        springLegDelta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length_delta
         self.springLegForce = self.spring_stiffness * (springLegDelta) * (directionVector)
 
     def SpaceControlForce(self):
@@ -263,6 +269,8 @@ class MathModel:
         self.timestep = timestep
         self.update()
         self.vel_center_of_gravity_update(timestep)
+        self.jacobian_cog_dot_update(timestep)
+        self.jacobian_s_dot_update(timestep)
 
 
     def update(self):

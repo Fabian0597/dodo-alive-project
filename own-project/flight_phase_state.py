@@ -2,6 +2,11 @@ import math
 from typing import Tuple, Any
 
 import numpy as np
+import sys
+import pathlib
+
+basefolder = str(pathlib.Path(__file__).parent.absolute())
+sys.path.append(basefolder + '/../../rbdl-tum/build/python/')
 import rbdl
 
 """

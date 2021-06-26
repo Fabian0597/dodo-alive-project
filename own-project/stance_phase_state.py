@@ -49,7 +49,7 @@ class StancePhaseState(PhaseState):
             self.math_model.impact_com = self.math_model.pos_com
             self.math_model.impact = True
             self.math_model.first_iteration_after_impact = True
-            self.math_model.vel_com_start_stance = self.math_model.vel_com
+            self.math_model.vel_com_start_stance = self.math_model.vel_com #where do we need that?
 
             # Energy compensation for impact at landing (kinetic energy loss of the cog point in the collision)
             mass = self.math_model.robot_mass
