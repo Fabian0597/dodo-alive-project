@@ -44,7 +44,6 @@ class PhaseState:
         """
         self.iteration_counter += 1
         delta_time = self._get_delta_time(time)
-
         #update math model
         self.math_model.state = State.from_q_qd_array(y, self.math_model.model.dof_count)
 
@@ -75,9 +74,12 @@ class PhaseState:
         return state
 
     def _get_delta_time(self, time):
-        if not self.last_timestep:
+        """
+        if self.last_timestep == None:
             delta_time = 1e-12  # 0
         else:
             delta_time = time - self.last_timestep
         self.last_timestep = time
         return delta_time
+        """
+        return 1e-12 #TODO: time received from ivp_solver decreases with time and therfore does also delta_time decreases over time
