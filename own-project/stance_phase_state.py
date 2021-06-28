@@ -82,3 +82,9 @@ class StancePhaseState(PhaseState):
         t_init = solver_result.t[-1]
         solver_state = solver_result.y.T[-1]
         return solver_state, t_init
+
+    def check_transfer_to_next_state(self, y):
+        if y[1]>0:
+            return True
+        else:
+            return False

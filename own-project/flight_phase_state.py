@@ -135,7 +135,7 @@ class FlightPhaseState(PhaseState):
 
         tau_flight = np.array([0, 0, 10, 0.1])
 
-        print("tau_flight: %s" % tau_flight)
+        #print("tau_flight: %s" % tau_flight)
 
         return tau_flight
 
@@ -228,3 +228,9 @@ class FlightPhaseState(PhaseState):
         # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
         solver_state[self.math_model.model.dof_count:] = qd_plus
         return solver_state, t_impact
+    
+    def check_transfer_to_next_state(self, y):
+        if y[1]<=0:
+            return True
+        else:
+            return False

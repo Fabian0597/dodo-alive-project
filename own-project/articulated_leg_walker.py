@@ -1,16 +1,20 @@
 
 import sys
 import pathlib
+
 basefolder = str(pathlib.Path(__file__).parent.absolute())
 sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
 
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.integrate import quad_vec
+
 import math
 import os
 
 from motion_state_machine import MotionStateMachine
+from math_model import MathModel, State
 import logging
 import sys
 
@@ -32,6 +36,8 @@ class ArticulatedLegWalker:
         logging.debug("Loading rbdl leg model")
         self.leg_model = rbdl.loadModel(leg_model_path)
 
+        self.math_model = MathModel(self.leg_model, des_com_pos)
+
         # get size of the generalized coordinates
         self.dof_count = self.leg_model.qdot_size
 
@@ -48,12 +54,12 @@ class ArticulatedLegWalker:
         self.emptySet.Bind(self.leg_model)
 
         logging.debug("init Motion State Machine")
-        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance)
+        self.state_machine = MotionStateMachine(self.leg_model, self.math_model, self.emptySet, self.constraintSetStance)
 
         logging.debug("open csv file")
         self.csv = open(basefolder + '/animation.csv', 'w')
 
-    def solve(self, t_init, t_final, init_state):
+    def solve(self, t_init, time_step, steps, init_state):
         """
         integrate to the output of the forward kinematics which is res = [qd, qdd] to get new state y = [q, qd]
 
@@ -62,6 +68,7 @@ class ArticulatedLegWalker:
         :param des_position: desired position target for the robot
         :param init_state: initial state of the robot's leg (q, qd)
         """
+        """    
         state = init_state
 
         while t_init < t_final:
@@ -87,6 +94,22 @@ class ArticulatedLegWalker:
                 self.log(solver.t[i], row[:self.dof_count])
 
             state, t_init = self.state_machine.switch_to_next_state(solver)
+        """
+  
+        self.math_model = State.from_q_qd_array(init_state, self.dof_count)
+        time = t_init
+        time_step = time_step
+        steps = steps
+        for _ in range(0,steps):
+            sol, _ = quad_vec(self.state_machine.active_state.solver_function, time, time + time_step)
+            time = time + time_step
+            self.math_model = State.from_q_qd_array(sol, self.dof_count)
+            print("##############")
+            print(self.math_model.state.q)
+            print("##############")
+
+            
+
 
     def log(self, time, q):
         """
@@ -128,7 +151,8 @@ if __name__ == "__main__":
 
     #initial and final time step for integrator
     t_init = 0
-    t_final_state = 0.59
+    time_step = 0.001
+    steps = 100
 
-    model.solve(t_init, t_final_state, init_state)
+    model.solve(t_init, time_step, steps, init_state)
     model.meshup()

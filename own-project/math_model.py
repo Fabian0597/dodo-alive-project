@@ -207,7 +207,7 @@ class MathModel:
         """
         # TODO: what is the normal J equal to Jcog like in C++ implementation?
         actuation_matrix_nullspace_s = self.selection_matrix @ self.nullspace_s
-        self.lambda_star = inv(self.jac_cog @ inv(self.mass_matrix) @
+        self.lambda_star = np.linalg.pinv(self.jac_cog @ inv(self.mass_matrix) @
                                actuation_matrix_nullspace_s.transpose() @ self.jac_star.transpose())
 
     def p_star_update(self):

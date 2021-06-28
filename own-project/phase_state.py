@@ -36,7 +36,7 @@ class PhaseState:
         """
         pass  # this is implemented for the concrete states only
 
-    def solver_function(self, time, y):
+    def solver_function(self, time):
         """
         computes the generalized accelerations from given generalized states, velocities and forces during flight
         :param time: time
@@ -46,14 +46,15 @@ class PhaseState:
         self.iteration_counter += 1
         delta_time = self._get_delta_time(time)
         #update math model
-        self.math_model.state = State.from_q_qd_array(y, self.math_model.model.dof_count)
+        #self.math_model.state = State.from_q_qd_array(y, self.math_model.model.dof_count)
 
         self.math_model.new_timestep_update(delta_time)
 
         tau_desired = self.controller_iteration(self.iteration_counter, delta_time)
-
+   
         state_derivative = self._forward_dynamics(tau_desired)
-
+    
+        
         return state_derivative
 
     def _forward_dynamics(self, tau_desired):
@@ -75,12 +76,12 @@ class PhaseState:
         return state
 
     def _get_delta_time(self, time):
-        """
+
         if self.last_timestep == None:
-            delta_time = 1e-12  # 0
+            delta_time = 0.001  # 0
         else:
             delta_time = time - self.last_timestep
         self.last_timestep = time
         return delta_time
-        """
-        return 1e-12 #TODO: time received from ivp_solver decreases with time and therfore does also delta_time decreases over time
+
+        #return 1e-3 #TODO: time received from ivp_solver decreases with time and therfore does also delta_time decreases over time
