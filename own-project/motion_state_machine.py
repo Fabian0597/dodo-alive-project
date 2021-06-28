@@ -26,15 +26,15 @@ class MotionStateMachine:
     whether it is in stance or fight mode
     """
 
-    def __init__(self, leg_model, des_com_pos, constraint_fight, constraint_stance):
+    def __init__(self, leg_model, des_com_pos, constraint_fight, constraint_stance, plotter):
         logging.debug("Create and update math model")
         self.math_model = MathModel(leg_model, des_com_pos)
         logging.debug("Update MathModel")
         #self.math_model.update() #TODO: where to update math model for the first time there where errors where some values of math model were used but still initialized with NONE ("typeerror-nonetype-object-is-not-subsriptable")
 
         logging.debug("Create State Phases")
-        flight_state = FlightPhaseState(self.math_model, constraint_fight)
-        stance_state = StancePhaseState(self.math_model, constraint_stance)
+        flight_state = FlightPhaseState(self.math_model, constraint_fight, plotter)
+        stance_state = StancePhaseState(self.math_model, constraint_stance, plotter)
         self.dof_count = leg_model.qdot_size
         self.states = {}
         self.states["Flight"] = flight_state

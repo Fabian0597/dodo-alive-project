@@ -12,14 +12,15 @@ from math_model import MathModel, State
 
 class PhaseState:
 
-    def __init__(self, math_model: MathModel, constraint):
+    def __init__(self, math_model: MathModel, constraint, plotter):
         self.iteration_counter = 0
         self.last_timestep = None
         self.events = None
         self.math_model = math_model
         self.constraint = constraint
+        self.plotter = plotter
 
-    def controller_iteration(self, iteration_counter: int, timestep: float):
+    def controller_iteration(self, iteration_counter: int, time, timestep: float):
         """
         performs iteration for a time step for the controller of this state
         :param iteration_counter: iteration for counter of the solver
@@ -45,12 +46,16 @@ class PhaseState:
         """
         self.iteration_counter += 1
         delta_time = self._get_delta_time(time)
+        print("delta time: %s" % delta_time)
         #update math model
+        print("state: %s" % y)
         self.math_model.state = State.from_q_qd_array(y, self.math_model.model.dof_count)
+
+        self.plotter.updateRobot(time, self.math_model.state.q)
 
         self.math_model.new_timestep_update(delta_time)
 
-        tau_desired = self.controller_iteration(self.iteration_counter, delta_time)
+        tau_desired = self.controller_iteration(self.iteration_counter, time, delta_time)
 
         state_derivative = self._forward_dynamics(tau_desired)
 
@@ -75,12 +80,10 @@ class PhaseState:
         return state
 
     def _get_delta_time(self, time):
-        """
         if self.last_timestep == None:
             delta_time = 1e-12  # 0
         else:
             delta_time = time - self.last_timestep
         self.last_timestep = time
         return delta_time
-        """
-        return 1e-12 #TODO: time received from ivp_solver decreases with time and therfore does also delta_time decreases over time
+        #return 1e-12 #TODO: time received from ivp_solver decreases with time and therfore does also delta_time decreases over time

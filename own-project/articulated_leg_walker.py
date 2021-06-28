@@ -9,6 +9,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 import math
 import os
+import RobotPlotter
 
 from motion_state_machine import MotionStateMachine
 import logging
@@ -47,11 +48,21 @@ class ArticulatedLegWalker:
         self.emptySet = rbdl.ConstraintSet()
         self.emptySet.Bind(self.leg_model)
 
-        logging.debug("init Motion State Machine")
-        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance)
-
         logging.debug("open csv file")
+        def stopByUser():
+            self.forceStop = True
+        self.robotPlotter = RobotPlotter.RobotPlotter(self.leg_model, stopByUser)
+        self.robotPlotter.setAxisLimit((-1, 6),(-1, 4))
+        for el in ["floatingBase","link1","link2", "foot"]:
+            self.robotPlotter.addBodyId(self.leg_model.GetBodyId(el))
+        #plot gound
+        self.robotPlotter.showPoints(0,"k-",[-1000,0], [1000, 0])
+
         self.csv = open(basefolder + '/animation.csv', 'w')
+
+        logging.debug("init Motion State Machine")
+        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance, self.robotPlotter)
+
 
     def solve(self, t_init, t_final, init_state):
         """
@@ -114,11 +125,11 @@ if __name__ == "__main__":
     
     model = ArticulatedLegWalker(
         leg_model_path=basefolder + "/articulatedLeg.lua",
-        des_com_pos = des_com_pos
+        des_com_pos=des_com_pos
     )
 
     # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
-    q_init = np.array([0.0, 3.0, np.deg2rad(0.0), np.deg2rad(25.0)])
+    q_init = np.array([0.0, 2.5, np.deg2rad(0.0), np.deg2rad(25.0)])
 
     # qd: The model's initial velocity is 0.
     qd_init = np.zeros(model.dof_count)

@@ -1,6 +1,8 @@
+import math
 from typing import Tuple, Any
 
 import numpy as np
+import rbdl
 
 """
 import sys
@@ -16,8 +18,8 @@ from phase_state import PhaseState
 
 class StancePhaseState(PhaseState):
 
-    def __init__(self, math_model: MathModel, constraint):
-        super().__init__(math_model, constraint)
+    def __init__(self, math_model: MathModel, constraint, plotter):
+        super().__init__(math_model, constraint, plotter)
 
         def jumping_event(time, y):
             """
@@ -28,14 +30,23 @@ class StancePhaseState(PhaseState):
             :param y: generalized coordinates and their derivative y=[q, qd].transpose()
             :return:
             """
+            foot_id = self.math_model.model.GetBodyId('foot')
+            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.math_model.state.q, foot_id,
+                                                      np.zeros(3), True)[:2]
             # from c++ code: foot_pos[1] < 0 and not (springLegDelta < 0.0 && vel_cog(1) > 0.0)
-            pass
+            if foot_pos[1] > 0:
+                return 0
+            elif self.math_model.leg_spring_delta and self.math_model.leg_length_delta < 0 \
+                    and self.math_model.vel_com[1] > 0.0:
+                return 0
+            else:
+                return 1
 
         jumping_event.terminal = True
 
         self.events = [jumping_event]
 
-    def controller_iteration(self, iteration_counter: int, timestep: float):
+    def controller_iteration(self, iteration_counter: int, time, timestep: float):
         """
         performs iteration for the controller of the stance phase.
         This simulates a mass-spring system (SLIP)

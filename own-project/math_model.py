@@ -258,12 +258,12 @@ class MathModel:
         else:
             impactComInFoot = actualComInFoot
         directionVector = actualComInFoot / np.linalg.norm(actualComInFoot)
-        springLegDelta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length_delta
-        self.springLegForce = self.spring_stiffness * (springLegDelta) * (directionVector)
+        self.leg_spring_delta = np.linalg.norm(impactComInFoot) - np.linalg.norm(actualComInFoot) + self.leg_length_delta
+        self.springLegForce = self.spring_stiffness * self.leg_spring_delta * directionVector
 
     def SpaceControlForce(self):
-        self.spaceControlForce = self.lambda_star * (1 / self.robot_mass) * (
-                self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
+        matrix = (1 / self.robot_mass) * (self.springLegForce + self.robot_mass * self.g) + self.mu_star + self.p_star
+        self.spaceControlForce = self.lambda_star @ matrix
 
     def new_timestep_update(self, timestep):
         self.timestep = timestep

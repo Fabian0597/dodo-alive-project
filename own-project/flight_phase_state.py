@@ -52,8 +52,8 @@ def limit_value_to_max_abs(value, max_abs):
 
 class FlightPhaseState(PhaseState):
 
-    def __init__(self, math_model, constraint):
-        super().__init__(math_model, constraint)
+    def __init__(self, math_model, constraint, plotter):
+        super().__init__(math_model, constraint, plotter)
 
         def touchdown_event(time, y):
             """
@@ -70,6 +70,7 @@ class FlightPhaseState(PhaseState):
             # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
             foot_id = self.math_model.model.GetBodyId('foot')
             foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.math_model.state.q, foot_id, np.zeros(3), True)[:2]
+            print("\nAAA foot_pos: %s" % foot_pos)
             return foot_pos[1]
 
         touchdown_event.terminal = True
@@ -87,7 +88,7 @@ class FlightPhaseState(PhaseState):
         self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d=0, k_c=5) #TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
 
         # Pose PID Controller
-        self.local_leg_length_spring = 0.9
+        self.local_leg_length_spring = 1.5  # TODO 0.9
         self.i_max_control = 0.5 * np.ones((2))
         self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
 
@@ -95,7 +96,7 @@ class FlightPhaseState(PhaseState):
         self.set_forces = True
         self.set_forces_glob = False
 
-    def controller_iteration(self, iteration_counter: int, timestep: float):
+    def controller_iteration(self, iteration_counter: int, time, timestep: float):
         """
         performs iteration for the controller of the flight phase.
         This simulates moves the leg to the right position to control velocity, position of the robot
@@ -111,29 +112,36 @@ class FlightPhaseState(PhaseState):
         #if abs(self.math_model.vel_com[1]) < 0.01 and self.set_forces:  # and contact_nr == 3 :
         #    self.set_forces = False
         #    self.set_forces_glob = True
+        self.time = time
 
+        print("\n")
         des_pos = self.math_model.des_com_pos
+        print("des_pos: %s" % des_pos)
 
         # Position Controller
         vel_des = self.position_controller(self.math_model, des_pos)
+        print("vel_des: %s" % vel_des)
 
         # Velocity Controller
         angle_of_attack = self.velocity_controller(iteration_counter, self.math_model, vel_des)
+        print("angle_of_attack: %s" % angle_of_attack)
 
         #
         xdd = self.pose_controller(self.math_model, timestep, angle_of_attack)
+        print("xdd: %s" % xdd)
 
         #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
         #TODO why do we need QR decomposition here?
         #q, r = np.linalg.qr(self.math_model.jac_base_s)
         pinv_jac_base_s = np.linalg.pinv(self.math_model.jac_base_s)
-        
+
+        print("xdd: %s" % xdd)
         tau_flight = self.math_model.mass_matrix @ pinv_jac_base_s @ xdd
 
         self.math_model.update()
         self.math_model.impact = False
 
-        tau_flight = np.array([0, 0, 10, 0.1])
+        #tau_flight = np.array([0, 0, 10, 0.1])
 
         print("tau_flight: %s" % tau_flight)
 
@@ -150,9 +158,10 @@ class FlightPhaseState(PhaseState):
         foot_id = math_model.model.GetBodyId("foot")
         pos_foot = rbdl.CalcBodyToBaseCoordinates(math_model.model, math_model.state.q, foot_id, np.zeros(3), True)[:2]
 
+        self.plotter.showPoints(self.time, 'go-', math_model.pos_com, pos_foot_des)
         pos_error = pos_foot_des - pos_foot
         # Derivative part PID
-        vel_error = calc_numerical_gradient(pos_error, self.previous_pos_error, timestep)
+        vel_error = 0  # calc_numerical_gradient(pos_error, self.previous_pos_error, timestep)
         self.previous_pos_error = pos_error
         # Integral part PID
         self.pose_pid_ctr.i_error += pos_error
@@ -163,6 +172,7 @@ class FlightPhaseState(PhaseState):
 
 
         mass_inv = np.linalg.inv(math_model.mass_matrix_ee)
+        print("xdd calc p %s i %s d %s" % (pos_error, self.pose_pid_ctr.i_error, vel_error))
         xdd = mass_inv @ self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=timestep,
                                                                 d_error=vel_error)
         return xdd
@@ -188,7 +198,8 @@ class FlightPhaseState(PhaseState):
 
         self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error, self.max_control_vel)
         vel_com_x = math_model.vel_com[0]  # velocity of center of mass in x direction
-        if iteration_counter % 5 == 0 or not math_model.angle_of_attack:
+        print("counter %s" % iteration_counter)
+        if iteration_counter % 5e14 == 0 or not math_model.angle_of_attack:
             # PID
             math_model.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=vel_com_x)
             math_model.angle_of_attack = limit_value_to_max_abs(math_model.angle_of_attack, self.max_angle_of_attack)
@@ -219,6 +230,9 @@ class FlightPhaseState(PhaseState):
         # set initial time t and state for next iteration which is last element of stored solver values
         t_impact = solver_result.t[-1]
         solver_state = solver_result.y.T[-1]
+
+        self.math_model.impact = True
+
         # Calculation of change of velocity through impact
         # qd_minus is the generalized velocity before and qd_plus the generalized velocity after the impact
         q_minus = solver_state[:self.math_model.model.dof_count]  # first half of state vector is q
