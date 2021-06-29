@@ -52,30 +52,8 @@ def limit_value_to_max_abs(value, max_abs):
 
 class FlightPhaseState(PhaseState):
 
-    def __init__(self, math_model, constraint, plotter):
-        super().__init__(math_model, constraint, plotter)
-
-        def touchdown_event(time, y):
-            """
-            This event marks the contact of foot with ground.
-            It is an event function for integrating solver of the flight phase.
-            When touchdown_event(t,y) = 0 solver stops
-            :param time: time
-            :param y: generalized coordinates and their derivative y=[q, qd].transpose()
-            :return:
-            """
-            self.math_model.state.q = y[:self.math_model.model.dof_count]
-            self.math_model.state.qd = y[self.math_model.model.dof_count:]
-
-            # Returns the base coordinates of the point (0,0,0) (--> origin of body frame) given in body coordinates of the foot
-            foot_id = self.math_model.model.GetBodyId('foot')
-            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.math_model.state.q, foot_id, np.zeros(3), True)[:2]
-            print("\nAAA foot_pos: %s" % foot_pos)
-            return foot_pos[1]
-
-        touchdown_event.terminal = True
-        
-        self.events = [touchdown_event]
+    def __init__(self, math_model, constraint, plotter, event):
+        super().__init__(math_model, constraint, plotter, event)
 
         # Position PI Controller
         self.max_pos = 1
@@ -96,7 +74,10 @@ class FlightPhaseState(PhaseState):
         self.set_forces = True
         self.set_forces_glob = False
 
-    def controller_iteration(self, iteration_counter: int, time, timestep: float):
+    def controller_iteration(self, time, state):
+        return np.array([0.0, 0.0, 0.0, 0.0])  # no control
+
+    def controller_iteration_old(self, iteration_counter: int, time, timestep: float):
         """
         performs iteration for the controller of the flight phase.
         This simulates moves the leg to the right position to control velocity, position of the robot

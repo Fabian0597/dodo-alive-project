@@ -18,35 +18,103 @@ from phase_state import PhaseState
 
 class StancePhaseState(PhaseState):
 
-    def __init__(self, math_model: MathModel, constraint, plotter):
-        super().__init__(math_model, constraint, plotter)
+    def __init__(self, math_model: MathModel, constraint, plotter, event):
+        super().__init__(math_model, constraint, plotter, event)
 
-        def jumping_event(time, y):
-            """
-            This event marks the transition from stance phase to fight phase, when the leg not touches the ground any more.
-            It is an event function for integrating solver of the stance phase.
-            When touchdown_event(t,y) = 0 solver stops
-            :param time: time
-            :param y: generalized coordinates and their derivative y=[q, qd].transpose()
-            :return:
-            """
-            foot_id = self.math_model.model.GetBodyId('foot')
-            foot_pos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, self.math_model.state.q, foot_id,
-                                                      np.zeros(3), True)[:2]
-            # from c++ code: foot_pos[1] < 0 and not (springLegDelta < 0.0 && vel_cog(1) > 0.0)
-            if foot_pos[1] > 0:
-                return 0
-            elif self.math_model.leg_spring_delta and self.math_model.leg_length_delta < 0 \
-                    and self.math_model.vel_com[1] > 0.0:
-                return 0
-            else:
-                return 1
+        self.old_t = -0.001
+        self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
+        self.old_J_cog = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
+        self.J_cog_grad = np.zeros(self.old_J_cog.shape)
+        self.J_s_grad = np.zeros(self.old_J_s.shape)
 
-        jumping_event.terminal = True
+    def controller_iteration(self, time, state):
+        model = self.math_model.model
+        q = state.q
+        qd = state.qd
+        gravity = model.gravity
 
-        self.events = [jumping_event]
+        # Js fußpunkt 2ter link -> point ist fußspitze (die in kontakt mit boden ist)
+        J_s = np.zeros((3, model.q_size))
 
-    def controller_iteration(self, iteration_counter: int, time, timestep: float):
+        footpos = rbdl.CalcBodyToBaseCoordinates(model, q, model.GetBodyId("foot"), np.zeros(3), False)
+        rbdl.CalcPointJacobian(model, q, model.GetBodyId("foot"), np.zeros(3), J_s, False)
+
+        J_s = np.delete(J_s, 2, 0)
+
+        # mass matrix
+        M = np.zeros((model.q_size, model.q_size))
+        rbdl.CompositeRigidBodyAlgorithm(model, q, M, False)
+        M_inv = np.linalg.inv(M)
+
+        # actuation matrix S -> only last joint is actuated
+        S = np.zeros((2, model.q_size))
+        S[0, 2] = 1
+        S[1, 3] = 1
+
+        # Jcog ist gesamtes (vom roboter)
+        pos_com = state.pos_com()
+
+        if pos_com is None:
+            pos_com = self.com_heights[-1]
+
+        J_com = state.jac_com()
+
+        # b coriolis/centrifugal -> TODO: b is a generalized force -> why do we need to peoject it to the COG?
+        b = np.zeros(model.q_size)
+        rbdl.NonlinearEffects(model, q, qd, b)
+
+        lambda_s = np.linalg.inv(J_s @ M_inv @ J_s.T)
+
+        N_s = np.eye(4) - M_inv @ J_s.T @ lambda_s @ J_s
+
+        J_star = J_com @ M_inv @ (S @ N_s).T @ np.linalg.inv(
+            S @ N_s @ M_inv @ (S @ N_s).T)  # TODO: check why pinv needed -> S was the problem!
+        J_star = J_star[0:2]
+
+        lambda_star = np.linalg.pinv(J_com[0:2] @ M_inv @ (S @ N_s).T @ J_star.T)
+        # lambda_star = np.linalg.inv(J_s @ M_inv @ S @ N_s @ J_s.T) # problem with dimensions
+
+        # calculate derivative of Jacobians
+        if time - self.old_t > 0.01:
+            self.J_cog_grad = (1 / (time - self.old_t)) * (J_com[0:2] - self.old_J_cog[0:2])
+            self.J_s_grad = (1 / (time - self.old_t)) * (J_s - self.old_J_s)
+
+        self.old_t = time
+        self.old_J_cog = J_com
+        self.old_J_s = J_s
+
+        term1 = lambda_star @ J_com[0:2] @ M_inv @ N_s.T @ b
+        term2 = lambda_star @ self.J_cog_grad @ qd
+        term3 = lambda_star @ J_com[0:2] @ M_inv @ J_s.T @ lambda_s @ self.J_s_grad @ state.qd
+        coriolis_grav_part = term1 - term2 + term3
+
+        # compute distance foot and COM
+        distance_foot_com = pos_com - footpos
+        slip_new_length = np.linalg.norm(distance_foot_com, ord=2)
+        angle = np.arctan2(distance_foot_com[1], distance_foot_com[0])
+
+        deltaX = self.math_model.slip_length - slip_new_length
+
+        if deltaX < 0:
+            deltaX = 0  # do not set negative forces -> energy loss
+            self.math_model.ff = np.zeros(3)
+            slip_force = np.zeros(2)
+        else:
+            slip_force = self.math_model.slip_stiffness * (
+                np.array([deltaX * math.cos(angle), deltaX * np.sin(angle), 0])) + self.math_model.robot_mass * gravity
+            self.math_model.ff = slip_force
+            slip_force = slip_force[0:2]
+
+        # Control law
+        torque_new = J_star.T @ (lambda_star @ ((1 / self.math_model.robot_mass) * slip_force))
+        coriolis = J_star.T @ coriolis_grav_part
+
+        tau = np.zeros(8)
+        tau[2:4] = coriolis + torque_new
+
+        return tau
+
+    def controller_iteration_old(self, iteration_counter: int, time, timestep: float):
         """
         performs iteration for the controller of the stance phase.
         This simulates a mass-spring system (SLIP)

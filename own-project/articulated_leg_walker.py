@@ -11,7 +11,7 @@ import math
 import os
 import RobotPlotter
 
-from motion_state_machine import MotionStateMachine
+from motion_state_machine import MotionHybridAutomaton
 import logging
 import sys
 
@@ -19,7 +19,7 @@ root = logging.getLogger()
 root.setLevel(logging.DEBUG)
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setLevel(logging.DEBUG)
+handler.setLevel(logging.ERROR)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(message)s')
 handler.setFormatter(formatter)
 root.addHandler(handler)
@@ -59,9 +59,10 @@ class ArticulatedLegWalker:
         self.robotPlotter.showPoints(0,"k-",[-1000,0], [1000, 0])
 
         self.csv = open(basefolder + '/animation.csv', 'w')
+        self.ffcsv = open(basefolder + '/forces.ff', 'w')
 
         logging.debug("init Motion State Machine")
-        self.state_machine = MotionStateMachine(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance, self.robotPlotter)
+        self.state_machine = MotionHybridAutomaton(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance, self.robotPlotter)
 
 
     def solve(self, t_init, t_final, init_state):
@@ -83,7 +84,7 @@ class ArticulatedLegWalker:
             # it solves the ode until it reaches the event touchdown_event(y,t)=0
             # so the foot hits the ground and has (y height 0)
             solver = solve_ivp(
-                fun=self.state_machine.active_state.solver_function,
+                fun=self.state_machine.active_state.flow_function,
                 t_span=[t_init, t_final],
                 y0=state,
                 events=self.state_machine.active_state.events
@@ -110,6 +111,13 @@ class ArticulatedLegWalker:
             # define the string we want to put into the csv file which is the time t and the value of the generalized cooridnates q for this time stamp
             self.csv.write(str(time) + ", " + ", ".join(map(str, q)) + "\n")
 
+        if self.ffcsv is not None:
+            force = self.state_machine.math_model.ff
+            #scale = abs(max(ff[3:6].min(), ff[3:6].max(), key=abs))
+            #if scale != 0:
+            #    self.state_machine.math_model.ff[3:6] = (ff[3:6] * 200 / scale)#scaled to 200
+            self.ffcsv.write(str(time) + ", "+ ", ".join(map(str, force)) + "\n")
+
     def meshup(self):
         """
         creates the vision for the leg
@@ -117,29 +125,27 @@ class ArticulatedLegWalker:
         if self.csv is not None:
             self.csv.close()
         # open meshup from python
-        os.system("meshup " + basefolder + "/articulatedLeg.lua " + basefolder + "/animation.csv")
+        #os.system("meshup " + basefolder + "/articulatedLeg.lua " + basefolder + "/animation.csv")
 
 
 if __name__ == "__main__":
     des_com_pos = 1  # one dimensional position
-    
+
     model = ArticulatedLegWalker(
-        leg_model_path=basefolder + "/articulatedLeg.lua",
+        leg_model_path="/home/stefan/git/dodo-alive-project/own-project-based-on-gruppe1/articulated_leg.lua",#basefolder + "/articulatedLeg.lua",
         des_com_pos=des_com_pos
     )
 
     # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
-    q_init = np.array([0.0, 2.5, np.deg2rad(0.0), np.deg2rad(25.0)])
-
     # qd: The model's initial velocity is 0.
-    qd_init = np.zeros(model.dof_count)
-    
-    #initial y_state
+    q_init = np.array([0.0, 2.5, np.deg2rad(55), np.deg2rad(-100)])
+    qd_init = np.array([0, 0, 0, 0])
     init_state = np.concatenate((q_init, qd_init))
 
     #initial and final time step for integrator
-    t_init = 0
-    t_final_state = 0.59
+    t_final = 1
 
-    model.solve(t_init, t_final_state, init_state)
+    model.state_machine.log_motion(t_final, init_state, model.log)
+    #model.solve(t_init, t_final_state, init_state)
     model.meshup()
+    model.robotPlotter.playbackMode()

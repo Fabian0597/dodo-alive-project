@@ -89,6 +89,11 @@ class MathModel:
         # TODO: what is this for?
         self.impact_com = None
 
+        #for slip model
+        self.slip_length = 0.6
+        self.slip_stiffness = 10000.  # TODO: 10000
+        self.ff = np.zeros(3)  # slip force
+
     def center_of_gravity_update(self):
         """
         Updates the center of gravity/mass
