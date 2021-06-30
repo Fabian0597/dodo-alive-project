@@ -91,12 +91,17 @@ class StancePhaseState(PhaseState):
         self.old_J_com = J_com
         self.old_J_s = J_s
 
-        # update the p star Hutter paper (11)
+        # coriolis and centriugal part in tau calculation (mu_star) star Hutter paper (10)
         term1 = lambda_star @ J_com @ M_inv @ N_s.T @ b
         term2 = lambda_star @ self.J_com_grad @ qd
         term3 = lambda_star @ J_com @ M_inv @ J_s.T @ lambda_s @ self.J_s_grad @ state.qd
-        coriolis_grav_part = term1 - term2 + term3
+        coriolis_part = term1 - term2 + term3
 
+        # gravitational part in tau calculation (p_star) star Hutter paper (11)
+        grav_part = lambda_star@J_com@M_inv@N_s.T@np.array([0, 0, 9.81, 0]) #TODO use gravity variable
+
+        # p_star and mu star added Hutter paper (12)
+        coriolis_grav_part = coriolis_part + grav_part
         # compute distance and orientation of foot and COM (which will simulate the spring length and orientation)
         distance_foot_com = pos_com - footpos
         slip_new_length = np.linalg.norm(distance_foot_com, ord=2)
@@ -122,7 +127,7 @@ class StancePhaseState(PhaseState):
         # Control law
         # torque applied during stance phase to generate the slip force
         torque_new = J_star.T @ (lambda_star @ ((1 / self.math_model.robot_mass) * slip_force))
-        # torque applied during stance phase to oppose coriolis and centrifugal force
+        # torque applied during stance phase to oppose coriolis and centrifugal and gravitational force
         coriolis = J_star.T @ coriolis_grav_part
 
         tau = np.zeros(8)
