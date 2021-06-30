@@ -46,7 +46,9 @@ class ContinuousState:
             self.qd = y[model.dof_count:]
 
     def pos_com(self):
-        ## lazy loaded com
+        """
+        calculate COM for the the given robot configuration
+        """
         if self.__com is None:
 
             mass_com_x = 0
@@ -81,6 +83,9 @@ class ContinuousState:
         return self.__com
 
     def jac_com(self):
+        """
+        calculate Jacobian in COM frame for the the given robot configuration
+        """
         if self.__jac is None:
             J_cog = np.zeros((3, self.__model.q_size))
             totalMass = 0
@@ -95,10 +100,16 @@ class ContinuousState:
         return self.__jac
 
     def vel_com(self):
+        """
+        calculate velocity of COM frame for the the given robot configuration
+        """
         jac = self.jac_com()
         return jac @ self.qd
 
     def to_array(self):
+        """
+        return the q and qd values stored as attributes in the ContinuousState object as as concatenated vector x
+        """
         return np.concatenate(self.q, self.qd)
 
 
