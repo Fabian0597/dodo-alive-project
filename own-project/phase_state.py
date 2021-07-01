@@ -49,7 +49,7 @@ class PhaseState:
         self.iteration_counter += 1
         delta_time = self._get_delta_time(time)
         self.math_model.state = State.from_q_qd_array(y, self.math_model.model.dof_count)
-        self.math_model.new_timestep_update(delta_time)
+
 
         from motion_state_machine import ContinuousState
         state = ContinuousState(self.math_model.model, y)
