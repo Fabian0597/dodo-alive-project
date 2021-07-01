@@ -65,7 +65,7 @@ class ArticulatedLegWalker:
         self.state_machine = MotionHybridAutomaton(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance, self.robotPlotter)
 
 
-    def solve(self, t_init, t_final, init_state):
+    def solve_old(self, t_init, t_final, init_state):
         """
         integrate to the output of the forward kinematics which is res = [qd, qdd] to get new state y = [q, qd]
 
@@ -125,14 +125,15 @@ class ArticulatedLegWalker:
         if self.csv is not None:
             self.csv.close()
         # open meshup from python
-        #os.system("meshup " + basefolder + "/articulatedLeg.lua " + basefolder + "/animation.csv")
+        os.system("meshup " + basefolder + "/articulatedLeg.lua " + basefolder + "/animation.csv")
 
 
 if __name__ == "__main__":
     des_com_pos = 1  # one dimensional position
 
     model = ArticulatedLegWalker(
-        leg_model_path="/home/stefan/git/dodo-alive-project/own-project-based-on-gruppe1/articulated_leg.lua",#basefolder + "/articulatedLeg.lua",
+        leg_model_path=basefolder + "/articulatedLeg.lua",
+        #leg_model_path="/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project-based-on-gruppe1/articulatedleg.lua",
         des_com_pos=des_com_pos
     )
 

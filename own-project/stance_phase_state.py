@@ -56,6 +56,8 @@ class StancePhaseState(PhaseState):
         # Calculated the position of the COM from the function defined in the ContinuousState Class
         pos_com = state.pos_com()
 
+        robot_mass = state.robot_mass()
+
         #if pos_com is None: # TODO: not used ??
         #    pos_com = self.com_heights[-1]
 
@@ -120,13 +122,13 @@ class StancePhaseState(PhaseState):
 
             # calculate slip force from spring stiffness and spring compression, seperate in x, y direction to keep force direction
             slip_force = self.math_model.slip_stiffness * (
-                np.array([deltaX * math.cos(angle), deltaX * np.sin(angle), 0])) + self.math_model.robot_mass * gravity
+                np.array([deltaX * math.cos(angle), deltaX * np.sin(angle), 0])) + robot_mass * gravity
             self.math_model.ff = slip_force
             slip_force = slip_force[0:2]
 
         # Control law
         # torque applied during stance phase to generate the slip force
-        torque_new = J_star.T @ (lambda_star @ ((1 / self.math_model.robot_mass) * slip_force))
+        torque_new = J_star.T @ (lambda_star @ ((1 / robot_mass) * slip_force))
         # torque applied during stance phase to oppose coriolis and centrifugal and gravitational force
         coriolis = J_star.T @ coriolis_grav_part
 

@@ -30,6 +30,7 @@ class DiscreteState(Enum):
 
 class ContinuousState:
     __com = None
+    __robot_mass = None
     __jac = None
     __model = None
 
@@ -82,6 +83,20 @@ class ContinuousState:
             """
         return self.__com
 
+
+    def robot_mass(self):
+
+        if self.__robot_mass is None:
+            totalMass = 0
+            for i in range(2, len(self.__model.mBodies)):
+                mass_i = self.__model.GetBody(i).mMass
+                totalMass += mass_i
+            self.__robot_mass = totalMass
+
+        return self.__robot_mass
+
+
+
     def jac_com(self):
         """
         calculate Jacobian in COM frame for the the given robot configuration
@@ -133,18 +148,19 @@ class GuardFunctions:
             :param x: continuous state of the robot [q, qd]
             :return: 0 if the transition is active
             """
+
             q = x[:self.model.dof_count]
             qd = x[self.model.dof_count:]
-
             foot_id = self.model.GetBodyId('foot')
             foot_pos = rbdl.CalcBodyToBaseCoordinates(self.model, q, foot_id, np.zeros(3), True)[:2]
-
-            vel_y = qd[1]
             foot_y = foot_pos[1]
-            if vel_y < -self.vel_threshold:
+
+            base_vel_y = qd[1]
+            if base_vel_y<=0: #make sure that the leg moves towards the ground
                 return foot_y
             else:
                 return 1
+
 
         g.terminal = True
         return g
@@ -160,52 +176,17 @@ class GuardFunctions:
             :param x: continuous state of the robot [q, qd]
             :return: 0 if the transition is active
             """
+
             q = x[:self.model.dof_count]
-            qd = x[self.model.dof_count:]
 
             foot_id = self.model.GetBodyId('foot')
             foot_pos = rbdl.CalcBodyToBaseCoordinates(self.model, q, foot_id, np.zeros(3), True)  # [:2]
 
-            spring_delta = self.math_model.leg_spring_delta
             state = ContinuousState(self.math_model.model, x)
-
-            vel_y = qd[1]
-            foot_y = foot_pos[1]
-
-            # if vel_y > self.vel_threshold and spring_delta < 0:
-            #    print("spring %s" % spring_delta)
-            #    return spring_delta
-            # else:
-            #    return 1
-            """
-            print("vel: %s" % vel_y)
-
-            if foot_y > 0:
-                return 0
-            elif self.math_model.leg_spring_delta and self.math_model.leg_length_delta < 0 \
-                    and vel_y > 0.0:
-                return 0
-            else:
-                return 1
-            """
             distance_foot_com = state.pos_com() - foot_pos
             slip_new_length = np.linalg.norm(distance_foot_com, ord=2)
-            f = self.math_model.slip_stiffness * (self.math_model.slip_length - slip_new_length)
 
-            # only detect if springforce decreases
-            if self.lastSpringForce > f:
-
-                floatingBasePos = rbdl.CalcBodyToBaseCoordinates(self.math_model.model, state.q,
-                                                                 self.math_model.model.GetBodyId("floatingBase"),
-                                                                 np.zeros(3),
-                                                                 False)
-                baseFootDist = np.linalg.norm(floatingBasePos - foot_pos, ord=2)
-                if f < 0.08 or abs(baseFootDist) > 1.55:  # f small or fully extended
-                    self.lastSpringForce = -10000
-                    return 0  # STOP
-
-            self.lastSpringForce = f
-            return 1
+            return self.math_model.slip_length - slip_new_length
 
         g.terminal = True
         return g
@@ -241,6 +222,7 @@ class JumpFunctions:
 
     def _calculate_new_slip_length(self, time, state):
         J_cog = state.jac_com()
+        robot_mass = state.robot_mass()
         J_s = np.zeros((3, self.model.q_size))
         rbdl.CalcPointJacobian(self.model, state.q, self.model.GetBodyId("foot"), np.zeros(3), J_s, False)
         J_s = np.delete(J_s, 2, 0)
@@ -254,16 +236,16 @@ class JumpFunctions:
 
         post_vel = np.linalg.norm(J_cog @ N_s @ np.linalg.pinv(J_cog) @ state.vel_com(), ord=2)
         print(self.math_model.slip_stiffness)
-        print(self.math_model.robot_mass)
+        print(robot_mass)
         print((state.qd.T @ matrix @ state.qd))
-        new_length = (1 / self.math_model.slip_stiffness) * self.math_model.robot_mass * (
+        new_length = (1 / self.math_model.slip_stiffness) * robot_mass * (
                     state.qd.T @ matrix @ state.qd)
         new_length = math.sqrt(abs(new_length))
         self.math_model.slip_length = self.slip_length_zero + new_length
         # if self.slip_length > 1.1:
         # print("max reached")
         # self.slip_length = 1.1
-        energy = 0.5 * self.math_model.robot_mass * state.qd.T @ matrix @ state.qd
+        energy = 0.5 * robot_mass * state.qd.T @ matrix @ state.qd
         # return self.slip_length_zero - new_length - 0.2
 
     def flight_to_stance_jump_function(self, time, x):

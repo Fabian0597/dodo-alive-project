@@ -90,9 +90,9 @@ class MathModel:
         self.impact_com = None
 
         #for slip model
-        self.slip_length = 0.6
-        self.slip_stiffness = 10000.  # TODO: 10000
-        self.ff = np.zeros(3)  # slip force
+        self.slip_length = 0.6 #(used)
+        self.slip_stiffness = 10000.  # TODO: 10000 #(used)
+        self.ff = np.zeros(3)  # slip force #(used)
 
     def center_of_gravity_update(self):
         """
@@ -152,7 +152,7 @@ class MathModel:
             jac_cog_sum += jac_cog_i
 
         self.jac_cog = (jac_cog_sum / mass_sum)[:2, :self.model.dof_count]
-        self.robot_mass = mass_sum
+        self.robot_mass = mass_sum #(used)
         """
         jac_dot_cog = np.zeros((3, self.model.dof_count))
         floatingbase_id = self.model.GetBodyId("floatingBase")
@@ -272,26 +272,26 @@ class MathModel:
 
     def new_timestep_update(self, timestep):
         self.timestep = timestep
-        self.update()
-        self.vel_center_of_gravity_update(timestep)
-        self.jacobian_cog_dot_update(timestep)
-        self.jacobian_s_dot_update(timestep)
+        #self.update()
+        #self.vel_center_of_gravity_update(timestep)
+        #self.jacobian_cog_dot_update(timestep)
+        #self.jacobian_s_dot_update(timestep)
 
 
-    def update(self):
-        self.center_of_gravity_update()
-        self.current_leg_length_update()
-        self.current_leg_angle_update()
-        self.spring_force_update()
-        self.jacobian_s_update()
-        self.mass_matrix_update()
-        self.mass_matrix_EE_update()
-        self.lambda_s_update()
-        self.nullspace_s_update()
-        self.jacobian_cog_update()
-        self.jacobian_star_update()
-        self.lambda_star_update()
-        self.b_vector_update()
-        self.p_star_update()
-        self.mu_star_update()
-        self.SpaceControlForce()
+    #def update(self):
+        #self.center_of_gravity_update()
+        #self.current_leg_length_update()
+        #self.current_leg_angle_update()
+        #self.spring_force_update()
+        #self.jacobian_s_update()
+        #self.mass_matrix_update()
+        #self.mass_matrix_EE_update()
+        #self.lambda_s_update()
+        #self.nullspace_s_update()
+        #self.jacobian_cog_update()
+        #self.jacobian_star_update()
+        #self.lambda_star_update()
+        #self.b_vector_update()
+        #self.p_star_update()
+        #self.mu_star_update()
+        #self.SpaceControlForce()
