@@ -33,7 +33,7 @@ class AbstractPhaseState:
         :param x: generalized coordinates and their derivatives y=[q, qd].transpose()
         :return: derivative yd = [qd, qdd]
         """
-        from motion_hybrid_automaton.motion_hybrid_automaton import ContinuousState
+        from motion_hybrid_automaton.continuous_state import ContinuousState
         state = ContinuousState(self.model, x)
 
         tau_desired = self.controller_iteration(time, state)  # Controller
