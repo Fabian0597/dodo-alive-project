@@ -1,6 +1,5 @@
 import math
 from enum import Enum
-from typing import Tuple, Any
 
 import numpy as np
 import rbdl
@@ -15,9 +14,9 @@ sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
 """
 
-from math_model import MathModel, State
-from flight_phase_state import FlightPhaseState
-from stance_phase_state import StancePhaseState
+from model.slip_model_params import SlipModelParameterization
+from motion_hybrid_automaton.phases.flight_phase_state import FlightPhaseState
+from motion_hybrid_automaton.phases.stance_phase_state import StancePhaseState
 
 import logging
 
@@ -37,8 +36,6 @@ class ContinuousState:
     def __init__(self, model, y=None):
         self.q = np.zeros(model.qdot_size)
         self.qd = np.zeros(model.qdot_size)
-        # self.qdd = np.zeros(model.qdot_size)
-        # self.tau = np.zeros(model.qdot_size)
 
         self.__model = model
 
@@ -54,7 +51,7 @@ class ContinuousState:
 
             mass_com_x = 0
             mass_com_y = 0
-            totalMass = 0
+            total_mass = 0
             for i in range(2, len(self.__model.mBodies)):
                 com_i = self.__model.GetBody(i).mCenterOfMass
                 com_i_base = rbdl.CalcBodyToBaseCoordinates(self.__model, self.q, i, com_i, False)
@@ -63,10 +60,10 @@ class ContinuousState:
                 #    return None  # something is wrong
                 mass_com_x += com_i_base[0] * mass_i
                 mass_com_y += com_i_base[1] * mass_i
-                totalMass += mass_i
+                total_mass += mass_i
 
-            com_x = mass_com_x / totalMass
-            com_y = mass_com_y / totalMass
+            com_x = mass_com_x / total_mass
+            com_y = mass_com_y / total_mass
 
             self.__com = np.array([com_x, com_y, 0.])
             """
@@ -83,7 +80,6 @@ class ContinuousState:
             """
         return self.__com
 
-
     def robot_mass(self):
 
         if self.__robot_mass is None:
@@ -94,8 +90,6 @@ class ContinuousState:
             self.__robot_mass = totalMass
 
         return self.__robot_mass
-
-
 
     def jac_com(self):
         """
@@ -156,11 +150,10 @@ class GuardFunctions:
             foot_y = foot_pos[1]
 
             base_vel_y = qd[1]
-            if base_vel_y<=0: #make sure that the leg moves towards the ground
+            if base_vel_y <= 0:  # make sure that the leg moves towards the ground
                 return foot_y
             else:
                 return 1
-
 
         g.terminal = True
         return g
@@ -178,11 +171,12 @@ class GuardFunctions:
             """
 
             q = x[:self.model.dof_count]
+            qd = x[self.model.dof_count:]
 
             foot_id = self.model.GetBodyId('foot')
             foot_pos = rbdl.CalcBodyToBaseCoordinates(self.model, q, foot_id, np.zeros(3), True)  # [:2]
 
-            state = ContinuousState(self.math_model.model, x)
+            state = ContinuousState(self.model, x)
             distance_foot_com = state.pos_com() - foot_pos
             slip_new_length = np.linalg.norm(distance_foot_com, ord=2)
 
@@ -225,32 +219,27 @@ class JumpFunctions:
         self.slip_length_zero = 0.6
 
     def _calculate_new_slip_length(self, time, state):
-        J_cog = state.jac_com()
+        # TODO check the Force is towards ground at the beginning of stance phase
+        # TODO remove unused lines
+        jac_com = state.jac_com()
         robot_mass = state.robot_mass()
-        J_s = np.zeros((3, self.model.q_size))
-        rbdl.CalcPointJacobian(self.model, state.q, self.model.GetBodyId("foot"), np.zeros(3), J_s, False)
-        J_s = np.delete(J_s, 2, 0)
+        jac_s = np.zeros((3, self.model.q_size))
+        rbdl.CalcPointJacobian(self.model, state.q, self.model.GetBodyId("foot"), np.zeros(3), jac_s, False)
+        jac_s = np.delete(jac_s, 2, 0)
         # mass matrix
-        M = np.zeros((self.model.q_size, self.model.q_size))
-        rbdl.CompositeRigidBodyAlgorithm(self.model, state.q, M, False)
-        M_inv = np.linalg.inv(M)
-        lambda_s = np.linalg.inv(J_s @ M_inv @ J_s.T)
-        N_s = np.eye(4) - M_inv @ J_s.T @ lambda_s @ J_s
-        matrix = J_cog.T @ J_cog - N_s.T @ J_cog.T @ J_cog @ N_s
+        mass_matrix = np.zeros((self.model.q_size, self.model.q_size))
+        rbdl.CompositeRigidBodyAlgorithm(self.model, state.q, mass_matrix, False)
+        mass_matrix_inv = np.linalg.inv(mass_matrix)
+        lambda_s = np.linalg.inv(jac_s @ mass_matrix_inv @ jac_s.T)
+        null_s = np.eye(4) - mass_matrix_inv @ jac_s.T @ lambda_s @ jac_s
+        matrix = jac_com.T @ jac_com - null_s.T @ jac_com.T @ jac_com @ null_s
 
-        post_vel = np.linalg.norm(J_cog @ N_s @ np.linalg.pinv(J_cog) @ state.vel_com(), ord=2)
-        print(self.math_model.slip_stiffness)
-        print(robot_mass)
-        print((state.qd.T @ matrix @ state.qd))
+        # post_vel = np.linalg.norm(jac_com @ null_s @ np.linalg.pinv(jac_com) @ state.vel_com(), ord=2)
         new_length = (1 / self.math_model.slip_stiffness) * robot_mass * (
-                    state.qd.T @ matrix @ state.qd)
+                state.qd.T @ matrix @ state.qd)
         new_length = math.sqrt(abs(new_length))
         self.math_model.slip_length = self.slip_length_zero + new_length
-        # if self.slip_length > 1.1:
-        # print("max reached")
-        # self.slip_length = 1.1
-        energy = 0.5 * robot_mass * state.qd.T @ matrix @ state.qd
-        # return self.slip_length_zero - new_length - 0.2
+        # energy = 0.5 * robot_mass * state.qd.T @ matrix @ state.qd
 
     def flight_to_stance_jump_function(self, time, x):
         # Calculation of change of velocity through impact
@@ -263,10 +252,8 @@ class JumpFunctions:
         # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
         x[self.model.dof_count:] = qd_plus
         """
-        # delete target value for flight phase
-        # self.flight_target_q = None
-        # self.flight_last_height = -100000
-        # self.flight_fallen_for_how_many_steps = 0
+        logging.info("change phase: flight > stance (time: %s)" % time)
+
         # take robot snapshot
         state = ContinuousState(self.model, x)
         # compute impulses
@@ -280,6 +267,7 @@ class JumpFunctions:
         return time, x
 
     def stance_to_flight_jump_function(self, time, x):
+        logging.info("change phase: stance > flight (time: %s)" % time)
         return time, x
 
 
@@ -291,19 +279,22 @@ class MotionHybridAutomaton:
     x: position / velocity
     """
 
-    def __init__(self, leg_model, des_com_pos, constraint_flight, constraint_stance, plotter):
+    def __init__(self, leg_model, des_com_pos, constraint_flight, constraint_stance, gui_plot):
+        logging.info("Init Motion Hybrid Automaton")
         logging.debug("Create and update math model")
-        self.math_model = MathModel(leg_model, des_com_pos)
+        self.model = leg_model
+        self.slip_model = SlipModelParameterization()
+        self.gui_plot = gui_plot
 
-        guard = GuardFunctions(self.math_model.model, self.math_model)
-        jump = JumpFunctions(self.math_model.model, self.math_model, constraint_flight, constraint_stance)
+        guard = GuardFunctions(self.model, self.slip_model)
+        jump = JumpFunctions(self.model, self.slip_model, constraint_flight, constraint_stance)
 
         logging.debug("Create State Phases")
         self.states = {
-            DiscreteState.FLIGHT: FlightPhaseState(self.math_model, constraint_flight, plotter,
-                                                   guard.flight_to_stance_guard_function()),
-            DiscreteState.STANCE: StancePhaseState(self.math_model, constraint_stance, plotter,
-                                                   guard.stance_to_flight_guard_function()),
+            DiscreteState.FLIGHT: FlightPhaseState(self, constraint_flight,
+                                                   [guard.flight_to_stance_guard_function()]),
+            DiscreteState.STANCE: StancePhaseState(self, constraint_stance,
+                                                   [guard.stance_to_flight_guard_function()]),
         }
 
         logging.debug("Create Transitions")
@@ -315,12 +306,19 @@ class MotionHybridAutomaton:
         self.z = DiscreteState.FLIGHT  # discrete state
         # self.x = init_state  # continuous state
 
-        logging.debug("Update MathModel")
-        # self.math_model.update() #TODO: where to update math model for the first time there where errors where some values of math model were used but still initialized with NONE ("typeerror-nonetype-object-is-not-subsriptable")
+    def current_constraint(self):
+        return self.states[self.z].constraint
 
-    def log_motion(self, t_final, init_state, log_callback):
-        time = 0
-        x = init_state
+    def simulate_motion(self, t_final, init_state, log_callback):
+        """
+        Calculates the differential equation of the movement for the stance and flight phase in sections alternately
+        and logs the movement so that it can be visualised later in MeshUp.
+        :param t_final: time when the solver should stop calculating the motion
+        :param init_state: the initial state of the robot leg at time (t=0)
+        :param log_callback: this method is called for logging a single time point with corresponding state
+        """
+        time, x = 0, init_state
+        logging.info("Start motion simulation")
 
         while time < t_final:
             # Solve an initial value problem for a system of ordinary differential equations (ode)
@@ -329,36 +327,27 @@ class MotionHybridAutomaton:
             # function to be integrated = f
             # it solves the ode until it reaches the event touchdown_event(y,t)=0
             # so the foot hits the ground and has (y height 0)
-            print("Solver for z=(%s)\nx=(%s)" % (self.z, x))
             active_state = self.states[self.z]
+            # TODO: use t_eval ?
+            # np.arange(time, t_final, 0.05)
+            # t_eval = np.array([0.4, 0.7]).copy(order='C')
+            # print(t_eval)
             solver = solve_ivp(
                 fun=active_state.flow_function,
                 t_span=[time, t_final], y0=x,
-                max_step=0.1,
+                max_step=0.2,
                 events=active_state.events
             )
-            time = solver.t[-1]
-            x = solver.y.T[-1]
+            time, x = solver.t[-1], solver.y.T[-1]
 
             # iterate over internal states saved by the solver during integration
             for i in range(0, len(solver.t)):
                 # returns the value of the solution y=[q,qd] at time stamp T[i] from the interval of integration
                 time = solver.t[i]
-                x_t = solver.y.T[i][:self.math_model.model.dof_count]  # state at time T[i] without derivatives
+                x_t = solver.y.T[i][:self.model.dof_count]  # state at time T[i] without derivatives
                 log_callback(time, x_t)
 
+            # transition to next discrete state
+            # (continuous state x is processed in the jump function to enter new discrete state)
             self.z, jump_function = self.transitions[self.z]
             time, x = jump_function(time, x)
-
-    def switch_to_next_state(self, solver_result):
-        """
-        Switches to the next state
-        :param solver_result: solver result of the last state solver iteration
-        :return: robot's state and time of the end of the last phase / state
-        """
-        state, time = self.active_state.transfer_to_next_state(solver_result)
-        self.active_state = self.transitions[self.active_state]
-
-        # give new state to active_state
-        self.active_state.math_model.state = self.active_state.math_model.state.from_q_qd_array(state, self.dof_count)
-        return state, time

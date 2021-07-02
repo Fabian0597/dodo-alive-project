@@ -1,5 +1,4 @@
 import math
-from typing import Tuple, Any
 
 import numpy as np
 import rbdl
@@ -12,14 +11,13 @@ sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
 import rbdl
 """
 
-from math_model import MathModel
-from phase_state import PhaseState
+from motion_hybrid_automaton.phases.abstract_phase_state import AbstractPhaseState
 
 
-class StancePhaseState(PhaseState):
+class StancePhaseState(AbstractPhaseState):
 
-    def __init__(self, math_model: MathModel, constraint, plotter, event):
-        super().__init__(math_model, constraint, plotter, event)
+    def __init__(self, hybrid_automaton, constraint, guard_functions):
+        super().__init__(hybrid_automaton, constraint, guard_functions)
 
         self.old_t = -0.001
         self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
@@ -28,7 +26,7 @@ class StancePhaseState(PhaseState):
         self.J_s_grad = np.zeros(self.old_J_s.shape)
 
     def controller_iteration(self, time, state):
-        model = self.math_model.model
+        model = self.model
         q = state.q
         qd = state.qd
         gravity = model.gravity
@@ -41,7 +39,7 @@ class StancePhaseState(PhaseState):
         # Jacobian in foot frame (TODO: in old skript J_s was Jacobian_foot-Jacobian_base)
         J_s = np.zeros((3, model.q_size))
         rbdl.CalcPointJacobian(model, q, model.GetBodyId("foot"), np.zeros(3), J_s, False)
-        J_s = np.delete(J_s, 2, 0) #delete in index 0(rows) the third row
+        J_s = np.delete(J_s, 2, 0)  # delete in index 0(rows) the third row
 
         # mass matrix and inverse of mass matrix
         M = np.zeros((model.q_size, model.q_size))
@@ -110,20 +108,21 @@ class StancePhaseState(PhaseState):
         angle = np.arctan2(distance_foot_com[1], distance_foot_com[0])
 
         # compression of the foot calculated with l_0 length of leg and current length of leg
-        deltaX = self.math_model.slip_length - slip_new_length
+        deltaX = self.slip_model.slip_length - slip_new_length
 
-        if deltaX < 0: # extended leg/ spring
+        if deltaX < 0:  # extended leg/ spring
             deltaX = 0  # do not set negative forces -> energy loss
 
             # set slip force to zero
-            self.math_model.ff = np.zeros(3)
+            self.slip_model.slip_force = np.zeros(3)
             slip_force = np.zeros(2)
-        else: # compressed leg/ spring
+        else:  # compressed leg/ spring
 
-            # calculate slip force from spring stiffness and spring compression, seperate in x, y direction to keep force direction
-            slip_force = self.math_model.slip_stiffness * (
+            # calculate slip force from spring stiffness and spring compression,
+            # seperate in x, y direction to keep force direction
+            slip_force = self.slip_model.slip_stiffness * (
                 np.array([deltaX * math.cos(angle), deltaX * np.sin(angle), 0])) + robot_mass * gravity
-            self.math_model.ff = slip_force
+            self.slip_model.slip_force = slip_force
             slip_force = slip_force[0:2]
 
         # Control law
@@ -147,40 +146,30 @@ class StancePhaseState(PhaseState):
         :return: torque (tau) from the controller (state of the robot's leg)
         """
 
-        if not self.math_model.impact:  # impact of the foot / start of stance phase
-            self.math_model.impact_com = self.math_model.pos_com
-            self.math_model.impact = True
-            self.math_model.first_iteration_after_impact = True
-            self.math_model.vel_com_start_stance = self.math_model.vel_com #where do we need that?
+        if not self.slip_model.impact:  # impact of the foot / start of stance phase
+            self.slip_model.impact_com = self.slip_model.pos_com
+            self.slip_model.impact = True
+            self.slip_model.first_iteration_after_impact = True
+            self.slip_model.vel_com_start_stance = self.slip_model.vel_com  # where do we need that?
 
             # Energy compensation for impact at landing (kinetic energy loss of the cog point in the collision)
-            mass = self.math_model.robot_mass
-            qd = self.math_model.state.qd
-            jac_cog = self.math_model.jac_cog
-            nullspace_s = self.math_model.nullspace_s
+            mass = self.slip_model.robot_mass
+            qd = self.slip_model.state.qd
+            jac_cog = self.slip_model.jac_cog
+            nullspace_s = self.slip_model.nullspace_s
             matrix_diff = jac_cog.transpose() @ jac_cog - nullspace_s.transpose() @ jac_cog.transpose() @ jac_cog @ nullspace_s
             vel_com_diff = qd.transpose() @ matrix_diff @ qd
             delta_e_kin = abs(0.5 * mass * vel_com_diff)
 
-            self.math_model.leg_length_delta = np.sqrt(2 * delta_e_kin / self.math_model.spring_stiffness)
+            self.slip_model.leg_length_delta = np.sqrt(2 * delta_e_kin / self.slip_model.spring_stiffness)
 
-            self.math_model.update()
+            self.slip_model.update()
 
         # new generalized velocity after impact
-        self.math_model.state.qd = self.math_model.nullspace_s @ self.math_model.state.qd
+        self.slip_model.state.qd = self.slip_model.nullspace_s @ self.slip_model.state.qd
 
-        tau_stance = self.math_model.jac_star.transpose() @ self.math_model.spaceControlForce
+        tau_stance = self.slip_model.jac_star.transpose() @ self.slip_model.spaceControlForce
 
         print("tau_stance: %s" % tau_stance.flatten())  # why is this matrix?
 
         return tau_stance.flatten()
-
-    def transfer_to_next_state(self, solver_result) -> Tuple[Any, Any]:
-        """
-        transfer stance to flight
-        :param solver_result: resulting output of the solver
-        :return: a tuple of robot's state for the next phase and the end time (start time for the next state)
-        """
-        t_init = solver_result.t[-1]
-        solver_state = solver_result.y.T[-1]
-        return solver_state, t_init

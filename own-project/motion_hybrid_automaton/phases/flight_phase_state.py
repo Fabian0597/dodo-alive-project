@@ -9,16 +9,9 @@ basefolder = str(pathlib.Path(__file__).parent.absolute())
 sys.path.append(basefolder + '/../../rbdl-tum/build/python/')
 import rbdl
 
-"""
-import sys
-import pathlib
-basefolder = str(pathlib.Path(__file__).parent.absolute())
-sys.path.append(basefolder+'/../../rbdl-tum/build/python/')
-import rbdl
-"""
+from motion_hybrid_automaton.phases.abstract_phase_state import AbstractPhaseState
 
-from math_model import calc_numerical_gradient, MathModel, State
-from phase_state import PhaseState
+
 class PIDController:
     """
     this class represent a PID controller with its gain values
@@ -40,7 +33,7 @@ class PIDController:
     def control_function(self, p_error, d_error=0, c_error=0, scale_i_error=1):
         output = self.k_p * p_error + self.k_i * scale_i_error * self.i_error + self.k_d * d_error
         output += self.k_c * c_error
-  
+
         return output
 
 
@@ -50,10 +43,10 @@ def limit_value_to_max_abs(value, max_abs):
     return limited_value
 
 
-class FlightPhaseState(PhaseState):
+class FlightPhaseState(AbstractPhaseState):
 
-    def __init__(self, math_model, constraint, plotter, event):
-        super().__init__(math_model, constraint, plotter, event)
+    def __init__(self, hybrid_automaton, constraint, guard_functions):
+        super().__init__(hybrid_automaton, constraint, guard_functions)
 
         # Position PI Controller
         self.max_pos = 1
@@ -63,7 +56,8 @@ class FlightPhaseState(PhaseState):
         # Velocity adapted PI Controller
         self.max_angle_of_attack = 18  # in deg
         self.max_control_vel = 6
-        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d=0, k_c=5) #TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
+        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d=0,
+                                              k_c=5)  # TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
 
         # Pose PID Controller
         self.local_leg_length_spring = 1.5  # TODO 0.9
@@ -90,39 +84,39 @@ class FlightPhaseState(PhaseState):
         # DISTURBED
         # do we need this
         # TODO contact_nr
-        #if abs(self.math_model.vel_com[1]) < 0.01 and self.set_forces:  # and contact_nr == 3 :
+        # if abs(self.math_model.vel_com[1]) < 0.01 and self.set_forces:  # and contact_nr == 3 :
         #    self.set_forces = False
         #    self.set_forces_glob = True
         self.time = time
 
         print("\n")
-        des_pos = self.math_model.des_com_pos
+        des_pos = self.slip_model.des_com_pos
         print("des_pos: %s" % des_pos)
 
         # Position Controller
-        vel_des = self.position_controller(self.math_model, des_pos)
+        vel_des = self.position_controller(self.slip_model, des_pos)
         print("vel_des: %s" % vel_des)
 
         # Velocity Controller
-        angle_of_attack = self.velocity_controller(iteration_counter, self.math_model, vel_des)
+        angle_of_attack = self.velocity_controller(iteration_counter, self.slip_model, vel_des)
         print("angle_of_attack: %s" % angle_of_attack)
 
         #
-        xdd = self.pose_controller(self.math_model, timestep, angle_of_attack)
+        xdd = self.pose_controller(self.slip_model, timestep, angle_of_attack)
         print("xdd: %s" % xdd)
 
-        #TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
-        #TODO why do we need QR decomposition here?
-        #q, r = np.linalg.qr(self.math_model.jac_base_s)
-        pinv_jac_base_s = np.linalg.pinv(self.math_model.jac_base_s)
+        # TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
+        # TODO why do we need QR decomposition here?
+        # q, r = np.linalg.qr(self.math_model.jac_base_s)
+        pinv_jac_base_s = np.linalg.pinv(self.slip_model.jac_base_s)
 
         print("xdd: %s" % xdd)
-        tau_flight = self.math_model.mass_matrix @ pinv_jac_base_s @ xdd
+        tau_flight = self.slip_model.mass_matrix @ pinv_jac_base_s @ xdd
 
-        self.math_model.update()
-        self.math_model.impact = False
+        self.slip_model.update()
+        self.slip_model.impact = False
 
-        #tau_flight = np.array([0, 0, 10, 0.1])
+        # tau_flight = np.array([0, 0, 10, 0.1])
 
         print("tau_flight: %s" % tau_flight)
 
@@ -139,23 +133,22 @@ class FlightPhaseState(PhaseState):
         foot_id = math_model.model.GetBodyId("foot")
         pos_foot = rbdl.CalcBodyToBaseCoordinates(math_model.model, math_model.state.q, foot_id, np.zeros(3), True)[:2]
 
-        self.plotter.showPoints(self.time, 'go-', math_model.pos_com, pos_foot_des)
+        self.gui_plot.showPoints(self.time, 'go-', math_model.pos_com, pos_foot_des)
         pos_error = pos_foot_des - pos_foot
         # Derivative part PID
         vel_error = 0  # calc_numerical_gradient(pos_error, self.previous_pos_error, timestep)
         self.previous_pos_error = pos_error
         # Integral part PID
         self.pose_pid_ctr.i_error += pos_error
-        
+
         self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error, self.i_max_control)
 
         # PID control
 
-
         mass_inv = np.linalg.inv(math_model.mass_matrix_ee)
         print("xdd calc p %s i %s d %s" % (pos_error, self.pose_pid_ctr.i_error, vel_error))
         xdd = mass_inv @ self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=timestep,
-                                                                d_error=vel_error)
+                                                            d_error=vel_error)
         return xdd
 
     def velocity_controller(self, iteration_counter, math_model, vel_des):
@@ -173,7 +166,7 @@ class FlightPhaseState(PhaseState):
             # TODO do we need this
             # vel_com_start_flight = math_model.vel_com
             # vel_com_diff_phase = vel_com_start_flight - math_model.vel_com_start_stance
-            
+
             # Integral Part PID
             self.velocity_pid_ctr.i_error += p_error  # accumalates the error - integral term
 
@@ -187,7 +180,7 @@ class FlightPhaseState(PhaseState):
         return math_model.angle_of_attack
 
     def position_controller(self, math_model, des_pos):
-        
+
         cur_pos = math_model.pos_com[0]  # current position
 
         # Proportional Part PID
@@ -195,7 +188,7 @@ class FlightPhaseState(PhaseState):
         # Integral Part PID
         self.position_pi_ctr.i_error += p_error
         self.position_pi_ctr.i_error = limit_value_to_max_abs(self.position_pi_ctr.i_error, self.max_pos)
-        
+
         # PID
         vel_des = self.position_pi_ctr.control_function(p_error=p_error)
         vel_des = limit_value_to_max_abs(vel_des, self.max_vel)
@@ -212,14 +205,14 @@ class FlightPhaseState(PhaseState):
         t_impact = solver_result.t[-1]
         solver_state = solver_result.y.T[-1]
 
-        self.math_model.impact = True
+        self.slip_model.impact = True
 
         # Calculation of change of velocity through impact
         # qd_minus is the generalized velocity before and qd_plus the generalized velocity after the impact
-        q_minus = solver_state[:self.math_model.model.dof_count]  # first half of state vector is q
-        qd_minus = solver_state[self.math_model.model.dof_count:]  # second half of state vector is qd
-        qd_plus = np.ones(self.math_model.model.dof_count)
-        rbdl.ComputeConstraintImpulsesDirect(self.math_model.model, q_minus, qd_minus, self.constraint, qd_plus)
+        q_minus = solver_state[:self.slip_model.model.dof_count]  # first half of state vector is q
+        qd_minus = solver_state[self.slip_model.model.dof_count:]  # second half of state vector is qd
+        qd_plus = np.ones(self.slip_model.model.dof_count)
+        rbdl.ComputeConstraintImpulsesDirect(self.slip_model.model, q_minus, qd_minus, self.constraint, qd_plus)
         # replace generalized velocity in state vector for next iteration by calculated velocity after ground impact
-        solver_state[self.math_model.model.dof_count:] = qd_plus
+        solver_state[self.slip_model.model.dof_count:] = qd_plus
         return solver_state, t_impact
