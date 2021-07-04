@@ -46,15 +46,17 @@ class ModelSimulation:
         self.constraint_set_stance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), y_plane)
         self.constraint_set_stance.Bind(self.leg_model)
 
+
         # flight phase
         self.constraint_set_flight = rbdl.ConstraintSet()
 
-        """"""
+        """
         self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), x_plane)
         self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), y_plane)
-        """"""
+        """
 
         self.constraint_set_flight.Bind(self.leg_model)
+
 
         logging.debug("init gui robot plotter")
         self.show_gui = show_gui

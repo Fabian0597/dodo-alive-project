@@ -31,10 +31,17 @@ class JumpFunctions:
         matrix = jac_com.T @ jac_com - null_s.T @ jac_com.T @ jac_com @ null_s
 
         # post_vel = np.linalg.norm(jac_com @ null_s @ np.linalg.pinv(jac_com) @ state.vel_com(), ord=2)
-        new_length = (1 / self.slip_model.slip_stiffness) * robot_mass * (
+        delta_leg_length = (1 / self.slip_model.slip_stiffness) * robot_mass * (
                 state.qd.T @ matrix @ state.qd)
-        new_length = math.sqrt(abs(new_length))
-        self.slip_model.slip_length = self.slip_model.slip_length_zero + new_length
+        delta_leg_length = math.sqrt(abs(delta_leg_length))
+
+        foot_id = self.model.GetBodyId('foot')
+        foot_pos = rbdl.CalcBodyToBaseCoordinates(self.model, state.q, foot_id, np.zeros(3), True)
+        com_pos = state.pos_com()
+        l0_before_impact = np.sum(com_pos - foot_pos)
+
+        self.slip_model.slip_length = l0_before_impact + delta_leg_length
+        #self.slip_model.slip_length = self.slip_model.slip_length_zero + delta_leg_length
         # energy = 0.5 * robot_mass * state.qd.T @ matrix @ state.qd
 
     def flight_to_stance_jump_function(self, time, x):
