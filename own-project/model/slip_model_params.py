@@ -1,12 +1,6 @@
 import numpy as np
 
 
-def calc_numerical_gradient(x_new, x_old, step_size):
-    if x_old is None:
-        return np.zeros(np.shape(x_new))
-    return (x_new - x_old) / step_size
-
-
 class SlipModelParameterization:
     """
     represents the mathematical model, where all the variables of the robot leg are stored

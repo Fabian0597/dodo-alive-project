@@ -38,7 +38,7 @@ class MotionHybridAutomaton:
     x: position / velocity
     """
 
-    def __init__(self, leg_model, des_com_pos, constraint_flight, constraint_stance, gui_plot):
+    def __init__(self, leg_model, des_pos_com, constraint_flight, constraint_stance, gui_plot):
         logging.info("Init Motion Hybrid Automaton")
         logging.debug("Create and update math model")
         self.model = leg_model
@@ -50,7 +50,7 @@ class MotionHybridAutomaton:
 
         logging.debug("Create State Phases")
         self.states = {
-            DiscreteState.FLIGHT: FlightPhaseState(self, constraint_flight,
+            DiscreteState.FLIGHT: FlightPhaseState(self, constraint_flight, des_pos_com,
                                                    [guard.flight_to_stance_guard_function()]),
             DiscreteState.STANCE: StancePhaseState(self, constraint_stance,
                                                    [guard.stance_to_flight_guard_function()]),

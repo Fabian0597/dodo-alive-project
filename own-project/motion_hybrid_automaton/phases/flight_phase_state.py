@@ -5,6 +5,8 @@ import numpy as np
 import sys
 import pathlib
 
+from motion_hybrid_automaton.continuous_state import ContinuousState
+
 basefolder = str(pathlib.Path(__file__).parent.absolute())
 sys.path.append(basefolder + '/../../rbdl-tum/build/python/')
 import rbdl
@@ -45,8 +47,9 @@ def limit_value_to_max_abs(value, max_abs):
 
 class FlightPhaseState(AbstractPhaseState):
 
-    def __init__(self, hybrid_automaton, constraint, guard_functions):
+    def __init__(self, hybrid_automaton, constraint, desired_pos_com, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
+        self.des_pos_com = desired_pos_com  # goal position for the robot (1 dimensional - x axis)
 
         # Position PI Controller
         self.max_pos = 1
@@ -60,18 +63,23 @@ class FlightPhaseState(AbstractPhaseState):
                                               k_c=5)  # TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
 
         # Pose PID Controller
-        self.local_leg_length_spring = 1.5  # TODO 0.9
+        self.local_leg_length_spring = 0.9  # TODO 0.9
         self.i_max_control = 0.5 * np.ones((2))
-        self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
+        self.pose_pid_ctr = PIDController(k_p=2000, k_i=0, k_d=-30, init_i_error=np.zeros(2))  # (k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
+        self.angle_of_attack = 0
+        self.pos_error_grad = np.zeros(2)
 
         self.previous_pos_error = None
         self.set_forces = True
         self.set_forces_glob = False
 
-    def controller_iteration(self, time, state):
-        return np.array([0.0, 0.0, 0.0, 0.0])  # no control
+        self.iteration_counter = 0
 
-    def controller_iteration_old(self, iteration_counter: int, time, timestep: float):
+    def controller_iteration(self, time, state):
+        # return np.array([0.0, 0.0, 0.0, 0.0])  # no control
+        return self.controller_iteration_old(time, state)
+
+    def controller_iteration_old(self, time, state):
         """
         performs iteration for the controller of the flight phase.
         This simulates moves the leg to the right position to control velocity, position of the robot
@@ -80,6 +88,7 @@ class FlightPhaseState(AbstractPhaseState):
         :param timestep: length of a time step / iteration
         :return:
         """
+        self.iteration_counter += 1
 
         # DISTURBED
         # do we need this
@@ -87,101 +96,40 @@ class FlightPhaseState(AbstractPhaseState):
         # if abs(self.math_model.vel_com[1]) < 0.01 and self.set_forces:  # and contact_nr == 3 :
         #    self.set_forces = False
         #    self.set_forces_glob = True
-        self.time = time
 
-        print("\n")
-        des_pos = self.slip_model.des_com_pos
-        print("des_pos: %s" % des_pos)
+        print("\ndesired_pos: %s" % self.des_pos_com)
 
         # Position Controller
-        vel_des = self.position_controller(self.slip_model, des_pos)
+        vel_des = self.position_controller(time, state, self.des_pos_com)
         print("vel_des: %s" % vel_des)
 
         # Velocity Controller
-        angle_of_attack = self.velocity_controller(iteration_counter, self.slip_model, vel_des)
+        angle_of_attack = self.velocity_controller(time, state, vel_des)
         print("angle_of_attack: %s" % angle_of_attack)
 
-        #
-        xdd = self.pose_controller(self.slip_model, timestep, angle_of_attack)
+        # Pose/Leg Controller
+        xdd = self.pose_controller(time, state, angle_of_attack)
         print("xdd: %s" % xdd)
 
         # TODO is qr factorization the same as completeOrthogonalDecomposition in c++ code und richtige reihenfolge
         # TODO why do we need QR decomposition here?
         # q, r = np.linalg.qr(self.math_model.jac_base_s)
-        pinv_jac_base_s = np.linalg.pinv(self.slip_model.jac_base_s)
+        pinv_jac_base_s = np.linalg.pinv(state.jac_base_s())
 
         print("xdd: %s" % xdd)
-        tau_flight = self.slip_model.mass_matrix @ pinv_jac_base_s @ xdd
+        tau_flight = state.mass_matrix() @ pinv_jac_base_s @ xdd
 
-        self.slip_model.update()
-        self.slip_model.impact = False
+        #self.slip_model.update()
+        #self.slip_model.impact = False
 
-        # tau_flight = np.array([0, 0, 10, 0.1])
+        #tau_flight = np.array([0.0, 0.0, 0.0, 0.0])
 
         print("tau_flight: %s" % tau_flight)
 
         return tau_flight
 
-    def pose_controller(self, math_model, timestep, angle_of_attack):
-        # POSE/LEG CONTROLLER
-        pos_foot_des = np.zeros(2)
-        angle_of_attack_rad = np.deg2rad(angle_of_attack)
-        pos_foot_des[0] = math_model.pos_com[0] + math.sin(angle_of_attack_rad) * self.local_leg_length_spring
-        pos_foot_des[1] = math_model.pos_com[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
-
-        # Proportional part PID
-        foot_id = math_model.model.GetBodyId("foot")
-        pos_foot = rbdl.CalcBodyToBaseCoordinates(math_model.model, math_model.state.q, foot_id, np.zeros(3), True)[:2]
-
-        self.gui_plot.showPoints(self.time, 'go-', math_model.pos_com, pos_foot_des)
-        pos_error = pos_foot_des - pos_foot
-        # Derivative part PID
-        vel_error = 0  # calc_numerical_gradient(pos_error, self.previous_pos_error, timestep)
-        self.previous_pos_error = pos_error
-        # Integral part PID
-        self.pose_pid_ctr.i_error += pos_error
-
-        self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error, self.i_max_control)
-
-        # PID control
-
-        mass_inv = np.linalg.inv(math_model.mass_matrix_ee)
-        print("xdd calc p %s i %s d %s" % (pos_error, self.pose_pid_ctr.i_error, vel_error))
-        xdd = mass_inv @ self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=timestep,
-                                                            d_error=vel_error)
-        return xdd
-
-    def velocity_controller(self, iteration_counter, math_model, vel_des):
-        cur_vel = math_model.vel_com[0]  # current velocity
-
-        # Proportional Part PID
-        p_error = (cur_vel - vel_des)
-
-        # FIRST IMPACT
-        if math_model.first_iteration_after_impact:
-            math_model.first_iteration_after_impact = False
-            math_model.leg_length_delta = 0
-
-            # VELOCITY CONTROLLER
-            # TODO do we need this
-            # vel_com_start_flight = math_model.vel_com
-            # vel_com_diff_phase = vel_com_start_flight - math_model.vel_com_start_stance
-
-            # Integral Part PID
-            self.velocity_pid_ctr.i_error += p_error  # accumalates the error - integral term
-
-        self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error, self.max_control_vel)
-        vel_com_x = math_model.vel_com[0]  # velocity of center of mass in x direction
-        print("counter %s" % iteration_counter)
-        if iteration_counter % 5e14 == 0 or not math_model.angle_of_attack:
-            # PID
-            math_model.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=vel_com_x)
-            math_model.angle_of_attack = limit_value_to_max_abs(math_model.angle_of_attack, self.max_angle_of_attack)
-        return math_model.angle_of_attack
-
-    def position_controller(self, math_model, des_pos):
-
-        cur_pos = math_model.pos_com[0]  # current position
+    def position_controller(self, time, state: ContinuousState, des_pos):
+        cur_pos = state.pos_com()[0]  # current position
 
         # Proportional Part PID
         p_error = (des_pos - cur_pos)
@@ -193,6 +141,67 @@ class FlightPhaseState(AbstractPhaseState):
         vel_des = self.position_pi_ctr.control_function(p_error=p_error)
         vel_des = limit_value_to_max_abs(vel_des, self.max_vel)
         return vel_des
+
+    def velocity_controller(self, time, state: ContinuousState, vel_des):
+        cur_vel = state.vel_com()[0]  # current velocity
+
+        # Proportional Part PID
+        p_error = (cur_vel - vel_des)
+
+        # FIRST IMPACT
+        """ TODO: add
+        if math_model.first_iteration_after_impact:
+            math_model.first_iteration_after_impact = False
+            math_model.leg_length_delta = 0
+
+            # VELOCITY CONTROLLER
+            # TODO do we need this
+            # vel_com_start_flight = math_model.vel_com
+            # vel_com_diff_phase = vel_com_start_flight - math_model.vel_com_start_stance
+
+            # Integral Part PID
+            self.velocity_pid_ctr.i_error += p_error  # accumalates the error - integral term
+        """
+        self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error, self.max_control_vel)
+        vel_com_x = state.vel_com()[0]  # velocity of center of mass in x direction
+        print("counter %s" % self.iteration_counter)
+        if self.iteration_counter % 5e14 == 0 or not self.angle_of_attack:
+            # PID
+            self.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=vel_com_x)
+            self.angle_of_attack = limit_value_to_max_abs(self.angle_of_attack, self.max_angle_of_attack)
+        return self.angle_of_attack
+
+    def pose_controller(self, time, state: ContinuousState, angle_of_attack):
+        # POSE/LEG CONTROLLER
+        pos_foot_des = np.zeros(2)
+        angle_of_attack_rad = np.deg2rad(angle_of_attack)
+        pos_foot_des[0] = state.pos_com()[0] + math.sin(angle_of_attack_rad) * self.local_leg_length_spring
+        pos_foot_des[1] = state.pos_com()[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
+
+        # Proportional part PID
+        foot_id = self.model.GetBodyId("foot")
+        pos_foot = rbdl.CalcBodyToBaseCoordinates(self.model, state.q, foot_id, np.zeros(3), True)[:2]
+
+        # self.gui_plot.showPoints(self.time, 'go-', state.pos_com(), pos_foot_des)
+        pos_error = pos_foot_des - pos_foot
+        # Derivative part PID
+        time_diff = time - self.last_iteration_time
+        if time_diff > 0.01:
+            self.pos_error_grad = self.calc_numerical_gradient(pos_error, self.previous_pos_error, time_diff)
+        vel_error = self.pos_error_grad
+        self.previous_pos_error = pos_error
+        # Integral part PID
+        self.pose_pid_ctr.i_error += pos_error
+
+        self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error, self.i_max_control)
+
+        # PID control
+        jac_s = state.jac_s()
+        mass_matrix_ee_inv = jac_s @ state.inv_mass_matrix() @ jac_s.T
+        print("xdd calc p %s i %s d %s" % (pos_error, self.pose_pid_ctr.i_error, vel_error))
+        xdd = mass_matrix_ee_inv @ self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=time_diff,
+                                                                      d_error=vel_error)
+        return xdd
 
     def transfer_to_next_state(self, solver_result) -> Tuple[Any, Any]:
         """

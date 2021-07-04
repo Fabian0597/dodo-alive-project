@@ -3,6 +3,8 @@ import math
 import numpy as np
 import rbdl
 
+from motion_hybrid_automaton.continuous_state import ContinuousState
+
 """
 import sys
 import pathlib
@@ -19,13 +21,12 @@ class StancePhaseState(AbstractPhaseState):
     def __init__(self, hybrid_automaton, constraint, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
 
-        self.old_t = -0.001
         self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
         self.old_J_com = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
         self.J_com_grad = np.zeros(self.old_J_com.shape)
         self.J_s_grad = np.zeros(self.old_J_s.shape)
 
-    def controller_iteration(self, time, state):
+    def controller_iteration(self, time, state: ContinuousState):
         model = self.model
         q = state.q
         qd = state.qd
@@ -33,23 +34,19 @@ class StancePhaseState(AbstractPhaseState):
 
         # Js fußpunkt 2ter link -> point ist fußspitze (die in kontakt mit boden ist)
 
-
         footpos = rbdl.CalcBodyToBaseCoordinates(model, q, model.GetBodyId("foot"), np.zeros(3), False)
 
-        # Jacobian in foot frame (TODO: in old skript J_s was Jacobian_foot-Jacobian_base)
-        J_s = np.zeros((3, model.q_size))
-        rbdl.CalcPointJacobian(model, q, model.GetBodyId("foot"), np.zeros(3), J_s, False)
-        J_s = np.delete(J_s, 2, 0)  # delete in index 0(rows) the third row
+        # Jacobian in foot frame (TODO: in old skript jac_s was Jacobian_foot-Jacobian_base)
+        jac_s = state.jac_s()
 
         # mass matrix and inverse of mass matrix
-        M = np.zeros((model.q_size, model.q_size))
-        rbdl.CompositeRigidBodyAlgorithm(model, q, M, False)
-        M_inv = np.linalg.inv(M)
+        inv_mass_matrix = state.inv_mass_matrix()
 
         # actuation matrix S (tau_1 = q_3, tau_2 = q_4)
         S = np.zeros((2, model.q_size))
         S[0, 2] = 1
         S[1, 3] = 1
+
 
         # Calculated the position of the COM from the function defined in the ContinuousState Class
         pos_com = state.pos_com()
@@ -68,37 +65,37 @@ class StancePhaseState(AbstractPhaseState):
         rbdl.NonlinearEffects(model, q, qd, b)
 
         # update the inertia matrix s Hutter paper between(4) and (5)
-        lambda_s = np.linalg.inv(J_s @ M_inv @ J_s.T)
+        lambda_s = np.linalg.inv(jac_s @ inv_mass_matrix @ jac_s.T)
 
         # update the nullspace_s Hutter paper between (4) and (5)
-        N_s = np.eye(4) - M_inv @ J_s.T @ lambda_s @ J_s
+        N_s = np.eye(4) - inv_mass_matrix @ jac_s.T @ lambda_s @ jac_s
 
         # update the nullspace_s in Hutter paper (8)
-        J_star = J_com @ M_inv @ (S @ N_s).T @ np.linalg.inv(S @ N_s @ M_inv @ (S @ N_s).T)  # TODO: check why pinv needed -> S was the problem! --> where was the pinv ? (question by Fabian)
+        J_star = J_com @ inv_mass_matrix @ (S @ N_s).T @ np.linalg.inv(S @ N_s @ inv_mass_matrix @ (S @ N_s).T)  # TODO: check why pinv needed -> S was the problem! --> where was the pinv ? (question by Fabian)
         J_star = J_star[0:2]
 
         # update the inertia matrix s Hutter paper between (4) and (5) (changed to normal inv since it we also did that in the other code and it works here as well (Fabian)
-        lambda_star = np.linalg.inv(J_com @ M_inv @ (S @ N_s).T @ J_star.T)
-        # lambda_star = np.linalg.inv(J_s @ M_inv @ S @ N_s @ J_s.T) # problem with dimensions
+        lambda_star = np.linalg.inv(J_com @ inv_mass_matrix @ (S @ N_s).T @ J_star.T)
+        # lambda_star = np.linalg.inv(jac_s @ inv_mass_matrix @ S @ N_s @ jac_s.T) # problem with dimensions
 
         # calculate derivative of Jacobian s in foot frame and Jacobian com in com frame
-        if time - self.old_t > 0.01:
-            self.J_com_grad = (1 / (time - self.old_t)) * (J_com - self.old_J_com)
-            self.J_s_grad = (1 / (time - self.old_t)) * (J_s - self.old_J_s)
+        time_diff = time - self.last_iteration_time
+        if time_diff > 0.01:
+            self.J_com_grad = self.calc_numerical_gradient(self.old_J_com, J_com, time_diff)
+            self.J_s_grad = self.calc_numerical_gradient(self.old_J_s, jac_s, time_diff)
 
         # update old Jacobian s in foot frame and Jacobian com in com frame and time for calculating the derivative in the next iteration
-        self.old_t = time
         self.old_J_com = J_com
-        self.old_J_s = J_s
+        self.old_J_s = jac_s
 
         # coriolis and centriugal part in tau calculation (mu_star) star Hutter paper (10)
-        term1 = lambda_star @ J_com @ M_inv @ N_s.T @ b
+        term1 = lambda_star @ J_com @ inv_mass_matrix @ N_s.T @ b
         term2 = lambda_star @ self.J_com_grad @ qd
-        term3 = lambda_star @ J_com @ M_inv @ J_s.T @ lambda_s @ self.J_s_grad @ state.qd
+        term3 = lambda_star @ J_com @ inv_mass_matrix @ jac_s.T @ lambda_s @ self.J_s_grad @ state.qd
         coriolis_part = term1 - term2 + term3
 
         # gravitational part in tau calculation (p_star) star Hutter paper (11)
-        grav_part = lambda_star@J_com@M_inv@N_s.T@np.array([0, 0, 9.81, 0]) #TODO use gravity variable
+        grav_part = lambda_star @ J_com @ inv_mass_matrix @ N_s.T @ np.array([0, 0, 9.81, 0]) #TODO use gravity variable
 
         # p_star and mu star added Hutter paper (12)
         coriolis_grav_part = coriolis_part + grav_part
@@ -108,10 +105,10 @@ class StancePhaseState(AbstractPhaseState):
         angle = np.arctan2(distance_foot_com[1], distance_foot_com[0])
 
         # compression of the foot calculated with l_0 length of leg and current length of leg
-        deltaX = self.slip_model.slip_length - slip_new_length
+        spring_compression = self.slip_model.slip_length - slip_new_length
 
-        if deltaX < 0:  # extended leg/ spring
-            deltaX = 0  # do not set negative forces -> energy loss
+        if spring_compression < 0:  # extended leg/ spring
+            spring_compression = 0  # do not set negative forces -> energy loss
 
             # set slip force to zero
             self.slip_model.slip_force = np.zeros(3)
@@ -119,9 +116,10 @@ class StancePhaseState(AbstractPhaseState):
         else:  # compressed leg/ spring
 
             # calculate slip force from spring stiffness and spring compression,
-            # seperate in x, y direction to keep force direction
-            slip_force = self.slip_model.slip_stiffness * (
-                np.array([deltaX * math.cos(angle), deltaX * np.sin(angle), 0])) + robot_mass * gravity
+            # separate in x, y direction to keep force direction
+            spring_compression_vec = np.array([
+                spring_compression * np.cos(angle), spring_compression * np.sin(angle), 0])
+            slip_force = self.slip_model.slip_stiffness * spring_compression_vec + robot_mass * gravity
             self.slip_model.slip_force = slip_force
             slip_force = slip_force[0:2]
 

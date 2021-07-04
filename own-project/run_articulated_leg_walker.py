@@ -38,17 +38,23 @@ class ModelSimulation:
         logging.debug("set constraints")
 
         # stance phase
-        self.constraintSetStance = rbdl.ConstraintSet()
+        self.constraint_set_stance = rbdl.ConstraintSet()
         # foot is constrained to move in the x plane and in the y plane (can not move anymore - is fixed to the ground)
         x_plane = np.array([1, 0, 0], dtype=np.double)
         y_plane = np.array([0, 1, 0], dtype=np.double)
-        self.constraintSetStance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), x_plane)
-        self.constraintSetStance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), y_plane)
-        self.constraintSetStance.Bind(self.leg_model)
+        self.constraint_set_stance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), x_plane)
+        self.constraint_set_stance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), y_plane)
+        self.constraint_set_stance.Bind(self.leg_model)
 
         # flight phase
-        self.emptySet = rbdl.ConstraintSet()
-        self.emptySet.Bind(self.leg_model)
+        self.constraint_set_flight = rbdl.ConstraintSet()
+
+        """"""
+        self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), x_plane)
+        self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), y_plane)
+        """"""
+
+        self.constraint_set_flight.Bind(self.leg_model)
 
         logging.debug("init gui robot plotter")
         self.show_gui = show_gui
@@ -66,7 +72,7 @@ class ModelSimulation:
         self.ffcsv = open(basefolder + '/forces.ff', 'w')
 
         logging.debug("init Motion State Machine")
-        self.state_machine = MotionHybridAutomaton(self.leg_model, des_com_pos, self.emptySet, self.constraintSetStance,
+        self.state_machine = MotionHybridAutomaton(self.leg_model, des_com_pos, self.constraint_set_flight, self.constraint_set_stance,
                                                    self.robot_plotter)
 
     def log(self, time, q):
@@ -102,7 +108,7 @@ class ModelSimulation:
 
 
 if __name__ == "__main__":
-    des_com_pos = 1  # one dimensional goal position of center of mass (com)
+    des_com_pos = 0  # one dimensional goal position of center of mass (com)
 
     model = ModelSimulation(
         leg_model_path=basefolder + "/model/articulatedLeg.lua",
@@ -112,7 +118,7 @@ if __name__ == "__main__":
 
     # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
     # qd: The model's initial velocity is 0.
-    q_init = np.array([0.0, 2.5, np.deg2rad(55), np.deg2rad(-100)])
+    q_init = np.array([0.0, 2.5, 0.01, 0.01])# np.deg2rad(55), np.deg2rad(-100)])
     qd_init = np.array([0, 0, 0, 0])
     init_state = np.concatenate((q_init, qd_init))
 

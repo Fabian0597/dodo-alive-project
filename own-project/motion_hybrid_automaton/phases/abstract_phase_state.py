@@ -8,6 +8,7 @@ import numpy as np
 
 
 class AbstractPhaseState:
+    last_iteration_time = -0.001  # time of the last iteration to calc gradients
 
     def __init__(self, hybrid_automaton, constraint, guard_functions):
         self.model = hybrid_automaton.model
@@ -38,6 +39,7 @@ class AbstractPhaseState:
 
         tau_desired = self.controller_iteration(time, state)  # Controller
 
+        self.last_iteration_time = time
         self.plot_state(state, time)  # Visualization
 
         xd = self._forward_dynamics(tau_desired, state)  # System dynamics
@@ -72,3 +74,8 @@ class AbstractPhaseState:
         xd[:self.model.dof_count] = state.qd
         xd[self.model.dof_count:] = qdd
         return xd
+
+    def calc_numerical_gradient(self, x_old, x_new, time_diff):
+        if x_old is None:
+            return np.zeros(np.shape(x_new))
+        return (x_new - x_old) / time_diff
