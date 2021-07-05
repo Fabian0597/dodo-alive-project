@@ -25,21 +25,20 @@ root.addHandler(handler)
 
 
 class ModelSimulation:
+    """
+    create leg model and its constraints, start state machine, visualize leg
+    """
     def __init__(self, leg_model_path, des_com_pos, show_gui):
-        # instance of rbdl model is loaded
-        # flight model
 
         logging.debug("Loading rbdl leg model")
-        self.leg_model = rbdl.loadModel(leg_model_path)
+        self.leg_model = rbdl.loadModel(leg_model_path) #lua model
 
-        # get size of the generalized coordinates
-        self.dof_count = self.leg_model.qdot_size
+        self.dof_count = self.leg_model.qdot_size # get size of the generalized coordinates
 
         logging.debug("set constraints")
 
-        # stance phase
+        # stance phase constraints (foot is constrained to move in the x plane and in the y plane (can not move anymore - is fixed to the ground))
         self.constraint_set_stance = rbdl.ConstraintSet()
-        # foot is constrained to move in the x plane and in the y plane (can not move anymore - is fixed to the ground)
         x_plane = np.array([1, 0, 0], dtype=np.double)
         y_plane = np.array([0, 1, 0], dtype=np.double)
         self.constraint_set_stance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), x_plane)
@@ -47,14 +46,12 @@ class ModelSimulation:
         self.constraint_set_stance.Bind(self.leg_model)
 
 
-        # flight phase
+        # flight phase constraints
         self.constraint_set_flight = rbdl.ConstraintSet()
-
         """
         self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), x_plane)
         self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), y_plane)
         """
-
         self.constraint_set_flight.Bind(self.leg_model)
 
 
@@ -80,9 +77,8 @@ class ModelSimulation:
     def log(self, time, q):
         """
         write a time sequence of generalized coordinates in csv file which is calculated by the ivp_solver
-        :param time:
-        :param q:
-        :return:
+        :param time: current time
+        :param q: generalized coordinates
         """
         if self.csv is not None:
             # define the string we want to put into the csv file which is the time t and the value of the generalized cooridnates q for this time stamp
@@ -90,9 +86,7 @@ class ModelSimulation:
 
         if self.ffcsv is not None:
             force = self.state_machine.slip_model.slip_force
-            # scale = abs(max(ff[3:6].min(), ff[3:6].max(), key=abs))
-            # if scale != 0:
-            #    self.state_machine.math_model.ff[3:6] = (ff[3:6] * 200 / scale)#scaled to 200
+            # define the string we want to put into the csv file which is the time t and the value of the generalized cooridnates q for this time stamp
             self.ffcsv.write(str(time) + ", " + ", ".join(map(str, force)) + "\n")
 
     def visualize(self):
@@ -110,8 +104,11 @@ class ModelSimulation:
 
 
 if __name__ == "__main__":
-    des_com_pos = 0  # one dimensional goal position of center of mass (com)
 
+    # one dimensional goal position of center of mass (com)
+    des_com_pos = 0
+
+    # init leg model simulation
     model = ModelSimulation(
         leg_model_path=basefolder + "/model/articulatedLeg.lua",
         des_com_pos=des_com_pos,
@@ -127,6 +124,8 @@ if __name__ == "__main__":
     # initial and final time step for integrator
     t_final = 5
 
+    #init state machine
     model.state_machine.simulate_motion(t_final, init_state, model.log)
 
+    # visualize the leg
     model.visualize()
