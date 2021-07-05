@@ -11,12 +11,15 @@ class AbstractPhaseState:
     last_iteration_time = -0.001  # time of the last iteration to calc gradients
 
     def __init__(self, hybrid_automaton, constraint, guard_functions):
-        self.model = hybrid_automaton.model
-        self.slip_model = hybrid_automaton.slip_model
-        self.gui_plot = hybrid_automaton.gui_plot
 
-        self.constraint = constraint
-        self.events = guard_functions
+        self.model = hybrid_automaton.model # Lua model of leg
+        self.slip_model = hybrid_automaton.slip_model #Parameterization of SlipModel
+
+        self.gui_plot = hybrid_automaton.gui_plot #vizualization of integration
+
+        self.constraint = constraint #foot is constrained to move in the x plane and in the y plane only during stance phase
+        
+        self.events = guard_functions #events which define the transition between flight and stance
 
     def controller_iteration(self, time, state):
         """
@@ -34,17 +37,23 @@ class AbstractPhaseState:
         :param x: generalized coordinates and their derivatives y=[q, qd].transpose()
         :return: derivative yd = [qd, qdd]
         """
+
+        # create state instance of ContinuousState which is better to handle and includes basic calculations for robot configuration
         from motion_hybrid_automaton.continuous_state import ContinuousState
         state = ContinuousState(self.model, x)
 
-        tau_desired = self.controller_iteration(time, state)  # Controller
+        # Controller
+        tau_desired = self.controller_iteration(time, state)
 
+        # Visualization of integration
         self.last_iteration_time = time
-        self.plot_state(state, time)  # Visualization
+        self.plot_state(state, time)
 
-        xd = self._forward_dynamics(tau_desired, state)  # System dynamics
+        # System dynamics
+        xd = self._forward_dynamics(tau_desired, state)
 
-        return xd  # derivative of the state [q, qd]
+        # return derivative of the state [q, qd]
+        return xd
 
     def plot_state(self, state, time):
         if self.gui_plot:
@@ -63,19 +72,24 @@ class AbstractPhaseState:
         :return: qd, qdd
         """
         # calculate qdd from q, qd, tau, f_ext for the model with the forward dynamics
-        # rbdl.ForwardDynamicsConstraintsDirect(self.leg_model, state.q, state.qd, state.tau,
-        #   self.constraints[self.discrete_state], state.qdd) --> this is just done during stance
         qdd = np.zeros(self.model.qdot_size)
         rbdl.ForwardDynamicsConstraintsDirect(self.model, state.q, state.qd,
                                               tau_desired, self.constraint, qdd)
 
-        # return res = [qd, qdd] from the forward dynamics which can then be given to the solver to be integrated by the ivp_solver
+        # hand over res = [qd, qdd] to the solver to be integrated by the ivp_solver
         xd = np.zeros(2 * self.model.dof_count)
         xd[:self.model.dof_count] = state.qd
         xd[self.model.dof_count:] = qdd
         return xd
 
     def calc_numerical_gradient(self, x_old, x_new, time_diff):
+        """
+        calculate numerical gradient
+        :param x_old: old value
+        :param x_new: new value
+        :param time_diff: time difference between these two values
+        :return: numerical gradient
+        """
         if x_old is None:
             return np.zeros(np.shape(x_new))
         return (x_new - x_old) / time_diff
