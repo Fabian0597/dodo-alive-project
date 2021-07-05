@@ -60,7 +60,9 @@ def limit_value_to_max_abs(value, max_abs):
 
 
 class FlightPhaseState(AbstractPhaseState):
-
+    """
+    controller during flight phase
+    """
     def __init__(self, hybrid_automaton, constraint, desired_pos_com, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
         self.des_pos_com = desired_pos_com  # goal foot position (1 dimensional - x axis)

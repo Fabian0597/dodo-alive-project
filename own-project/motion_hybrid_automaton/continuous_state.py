@@ -5,7 +5,21 @@ import rbdl
 class ContinuousState:
     __robot_mass = None
     __model = None
-
+    """
+    class which helps to handle the robot state more easy.
+    It offers basic calculations for the robot configuration which are used several times:
+        - position of center of mass
+        - velocity of center of mass 
+        - robot mass
+        - mass matrix
+        - inverse of mass matrix
+        - Jacobian of com
+        - Support Jacobian of foot
+        - Support Jacobian of floating base
+        - Transformation between q, qd attributes of this class and concatenated vectro x = [q, qd]
+        
+        
+    """
     def __init__(self, model, y=None):
         # generalized coordintaes of robot
         self.q = np.zeros(model.qdot_size)

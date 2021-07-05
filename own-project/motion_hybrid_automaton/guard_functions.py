@@ -5,7 +5,9 @@ from motion_hybrid_automaton.continuous_state import ContinuousState
 
 
 class GuardFunctions:
-
+    """
+    defines events which are used by ivp_solver which activates the transition between states
+    """
     def __init__(self, model, slip_model):
         self.model = model # Lua leg model
         self.slip_model = slip_model # parameter of leg mdoel

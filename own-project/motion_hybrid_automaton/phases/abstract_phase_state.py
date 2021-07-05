@@ -8,6 +8,13 @@ import numpy as np
 
 
 class AbstractPhaseState:
+    """
+    abstract class which implements the flow function for ivp solver
+    it includes:
+        - controller for flight and stance phase
+        - system dynamics
+        - plot generator
+    """
     last_iteration_time = -0.001  # time of the last iteration to calc gradients
 
     def __init__(self, hybrid_automaton, constraint, guard_functions):

@@ -17,7 +17,9 @@ from motion_hybrid_automaton.phases.abstract_phase_state import AbstractPhaseSta
 
 
 class StancePhaseState(AbstractPhaseState):
-
+    """
+    controller during flight phase
+    """
     def __init__(self, hybrid_automaton, constraint, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
 

@@ -8,7 +8,9 @@ from motion_hybrid_automaton.continuous_state import ContinuousState
 
 
 class JumpFunctions:
-
+    """
+    defines the transition between stance and flight phase. Energy compensation from flight to stance
+    """
     def __init__(self, motion_hybrid_automaton):
         self.model = motion_hybrid_automaton.model # lua leg model
         self.slip_model = motion_hybrid_automaton.slip_model # leg model parameter
