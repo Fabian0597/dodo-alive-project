@@ -192,8 +192,8 @@ class FlightPhaseState(AbstractPhaseState):
 
         # Differential part PID
         time_diff = time - self.last_iteration_time
-        if time_diff > 0.01:
-            self.pos_error_grad = self.calc_numerical_gradient(pos_error, self.previous_pos_error, time_diff)
+        if time_diff > 1e-4:
+            self.pos_error_grad = self.calc_numerical_gradient(self.previous_pos_error, pos_error, time_diff)
         vel_error = self.pos_error_grad
         self.previous_pos_error = pos_error
 

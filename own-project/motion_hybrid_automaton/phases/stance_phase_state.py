@@ -90,7 +90,7 @@ class StancePhaseState(AbstractPhaseState):
 
         # calculate derivative of Jacobian s in foot frame and Jacobian com in com frame
         time_diff = time - self.last_iteration_time
-        if time_diff > 0.01:
+        if time_diff > 1e-4:
             self.J_com_grad = self.calc_numerical_gradient(self.old_J_com, J_com, time_diff)
             self.J_s_grad = self.calc_numerical_gradient(self.old_J_s, jac_s, time_diff)
 
