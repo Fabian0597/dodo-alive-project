@@ -129,7 +129,7 @@ class FlightPhaseState(AbstractPhaseState):
         """
 
         # Proportional Part PID
-        cur_pos = state.pos_com()[0]  # current com position
+        cur_pos = state.q[0]  # TODO: state.pos_com()[0]  # current com position
         p_error = (des_pos - cur_pos)
 
         # Integral Part PID
