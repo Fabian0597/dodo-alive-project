@@ -25,6 +25,9 @@ import logging
 
 
 class DiscreteState(Enum):
+    """
+    discrete states (z) for state machine
+    """
     STANCE = 0
     FLIGHT = 1
     NOT_MOVING = 2
@@ -35,20 +38,21 @@ class MotionHybridAutomaton:
     This hybrid automaton/state machine represents the states of the walker and the transitions to switch between states.
     The state consists of a discrete state (z) and a continuous state (x).
     z: whether it is in stance or fight mode
-    x: position / velocity
+    x: position / velocity [q, qd]
     """
 
     def __init__(self, leg_model, des_pos_com, constraint_flight, constraint_stance, gui_plot):
         logging.info("Init Motion Hybrid Automaton")
         logging.debug("Create and update math model")
-        self.model = leg_model
-        self.slip_model = SlipModelParameterization()
-        self.gui_plot = gui_plot
+        self.model = leg_model # lua model of robot leg
+        self.slip_model = SlipModelParameterization() #parameters for leg model
+        self.gui_plot = gui_plot #visualizer
 
-        guard = GuardFunctions(self.model, self.slip_model)
-        jump = JumpFunctions(self)
+        guard = GuardFunctions(self.model, self.slip_model) # events for ivp solve
+        jump = JumpFunctions(self) #impact compensation during transition from flight to stance
 
         logging.debug("Create State Phases")
+        # dictionary with all possible states
         self.states = {
             DiscreteState.FLIGHT: FlightPhaseState(self, constraint_flight, des_pos_com,
                                                    [guard.flight_to_stance_guard_function()]),
@@ -57,15 +61,19 @@ class MotionHybridAutomaton:
         }
 
         logging.debug("Create Transitions")
+        # dictionary with all possible transitions
         self.transitions = {
             DiscreteState.FLIGHT: [DiscreteState.STANCE, jump.flight_to_stance_jump_function],
             DiscreteState.STANCE: [DiscreteState.FLIGHT, jump.stance_to_flight_jump_function],
         }
 
-        self.z = DiscreteState.FLIGHT  # discrete state
-        # self.x = init_state  # continuous state
+        self.z = DiscreteState.FLIGHT  #discrete state
 
     def current_constraint(self):
+        """
+        get constraints of active state
+        :return: constraints of active state
+        """
         return self.states[self.z].constraint
 
     def simulate_motion(self, t_final, init_state, log_callback):
@@ -83,28 +91,27 @@ class MotionHybridAutomaton:
             # Solve an initial value problem for a system of ordinary differential equations (ode)
             # Interval of integration (t_init,, t_final).
             # state = initial state
-            # function to be integrated = f
-            # it solves the ode until it reaches the event touchdown_event(y,t)=0
-            # so the foot hits the ground and has (y height 0)
+            # function to be integrated = flow function of active state which includes the systems dynamics and phase controller
+            # ivp solver numerically integrates a system of ordinary differential equations until event touchdown_event(y,t)=0 or t = t_final
+
+            # active discrete state
             active_state = self.states[self.z]
-            # TODO: use t_eval ?
-            # np.arange(time, t_final, 0.05)
-            # t_eval = np.array([0.4, 0.7]).copy(order='C')
-            # print(t_eval)
+
+            #ivp_solver
             solver = solve_ivp(
                 fun=active_state.flow_function,
                 t_span=[time, t_final], y0=x,
                 max_step=0.2,
                 events=active_state.events
             )
+            # get the last state, time from previous iteration as initial state, time for next iteration
             time, x = solver.t[-1], solver.y.T[-1]
 
-            # iterate over internal states saved by the solver during integration
+            # iterate over internal states saved by the solver during integration and log those for visualization
             for i in range(0, len(solver.t)):
-                # returns the value of the solution y=[q,qd] at time stamp T[i] from the interval of integration
-                time = solver.t[i]
-                x_t = solver.y.T[i][:self.model.dof_count]  # state at time T[i] without derivatives
-                log_callback(time, x_t)
+                time = solver.t[i] # time stamp T[i]
+                x_t = solver.y.T[i][:self.model.dof_count]  # state and state velocity at time T[i]
+                log_callback(time, x_t) #log
 
             # transition to next discrete state
             # (continuous state x is processed in the jump function to enter new discrete state)
