@@ -81,11 +81,11 @@ class FlightPhaseState(AbstractPhaseState):
         self.angle_of_attack = 0
 
         # Pose PID Controller for controlling the foot acceleration based on the angle of attack (inner cascade)
-        self.local_leg_length_spring = 0.9  #controlls the desired leg length for the impact
-        self.i_max_control = 0.5 * np.ones((2)) #to clip the Integral part where the foot position errors are summed up
-        self.pose_pid_ctr = PIDController(k_p=200, k_i=0, k_d=-16, init_i_error=np.zeros(2))
-        self.pos_error_grad = np.zeros(2) #differential foot position error
-        self.previous_pos_error = None # last foot position error for numerical gradient
+        self.local_leg_length_spring = 0.9  # controls the desired leg length for the impact
+        self.i_max_control = 0.5 * np.ones(2)  # to clip the Integral part where the foot position errors are summed up
+        self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
+        self.pos_error_grad = np.zeros(2)  # differential foot position error
+        self.previous_pos_error = None  # last foot position error for numerical gradient
 
         self.iteration_counter = 0  # counts number of iterations called be integrator
 
