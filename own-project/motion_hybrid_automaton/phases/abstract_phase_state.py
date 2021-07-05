@@ -19,14 +19,14 @@ class AbstractPhaseState:
 
     def __init__(self, hybrid_automaton, constraint, guard_functions):
 
-        self.model = hybrid_automaton.model # Lua model of leg
-        self.slip_model = hybrid_automaton.slip_model #Parameterization of SlipModel
+        self.model = hybrid_automaton.model  # Lua model of leg
+        self.slip_model = hybrid_automaton.slip_model  # Parameterization of SlipModel
 
-        self.gui_plot = hybrid_automaton.gui_plot #vizualization of integration
+        self.gui_plot = hybrid_automaton.gui_plot  # visualization of integration
 
-        self.constraint = constraint #foot is constrained to move in the x plane and in the y plane only during stance phase
-        
-        self.events = guard_functions #events which define the transition between flight and stance
+        self.constraint = constraint  # foot is constrained to move in the x and y plane only during stance phase
+
+        self.events = guard_functions  # events which define the transition between flight and stance
 
     def controller_iteration(self, time, state):
         """
@@ -37,6 +37,7 @@ class AbstractPhaseState:
         """
         pass  # this is implemented for the concrete states only
 
+
     def flow_function(self, time, x):
         """
         computes the generalized states derivative given the generalized states (velocities and forces during flight)
@@ -45,7 +46,8 @@ class AbstractPhaseState:
         :return: derivative yd = [qd, qdd]
         """
 
-        # create state instance of ContinuousState which is better to handle and includes basic calculations for robot configuration
+        # create state instance of ContinuousState which is better to handle
+        # and includes basic calculations for robot configuration
         from motion_hybrid_automaton.continuous_state import ContinuousState
         state = ContinuousState(self.model, x)
 

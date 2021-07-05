@@ -109,9 +109,9 @@ class MotionHybridAutomaton:
 
             # iterate over internal states saved by the solver during integration and log those for visualization
             for i in range(0, len(solver.t)):
-                time = solver.t[i] # time stamp T[i]
+                time = solver.t[i]  # time stamp T[i]
                 x_t = solver.y.T[i][:self.model.dof_count]  # state and state velocity at time T[i]
-                log_callback(time, x_t) #log
+                log_callback(time, x_t)  # log
 
             # transition to next discrete state
             # (continuous state x is processed in the jump function to enter new discrete state)

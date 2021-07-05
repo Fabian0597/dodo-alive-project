@@ -20,7 +20,8 @@ class JumpFunctions:
         # TODO check the Force is towards ground at the beginning of stance phase
         # TODO remove unused lines
         """
-        modified  SLIP model with impact compensation which differs from the regular SLIP model only in the fact that the leg spring is being pre-compressed at touch-down. The precompressed leg length is calculated here
+        modified  SLIP model with impact compensation which differs from the regular SLIP model only in the fact
+        that the leg spring is being pre-compressed at touch-down. The precompressed leg length is calculated here.
         :param state: robot state
         """
         # get jacobians, robot mass, inverse of mass matrix from the function defined in the ContinuousState Class

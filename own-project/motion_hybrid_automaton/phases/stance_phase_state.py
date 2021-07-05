@@ -20,14 +20,15 @@ class StancePhaseState(AbstractPhaseState):
     """
     controller during flight phase
     """
+
     def __init__(self, hybrid_automaton, constraint, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
 
-        self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float) # old J_s for numerical gradient
-        self.J_s_grad = np.zeros(self.old_J_s.shape) # numerical gradient for J_s
+        self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)  # old J_s for numerical gradient
+        self.J_s_grad = np.zeros(self.old_J_s.shape)  # numerical gradient for J_s
 
-        self.old_J_com = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float) # old J_com for numerical gradient
-        self.J_com_grad = np.zeros(self.old_J_com.shape) # numerical gradient of J_com
+        self.old_J_com = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)  # old J_com for numerical gradient
+        self.J_com_grad = np.zeros(self.old_J_com.shape)  # numerical gradient of J_com
 
     def controller_iteration(self, time, state: ContinuousState):
         """
@@ -45,7 +46,8 @@ class StancePhaseState(AbstractPhaseState):
         # position of foot
         footpos = rbdl.CalcBodyToBaseCoordinates(model, q, model.GetBodyId("foot"), np.zeros(3), False)
 
-        # Jacobian in foot frame from the function defined in the ContinuousState Class (TODO: in old skript jac_s was Jacobian_foot-Jacobian_base)
+        # Jacobian in foot frame from the function defined in the ContinuousState Class
+        # (TODO: in old skript jac_s was Jacobian_foot-Jacobian_base)
         jac_s = state.jac_s()
 
         # inverse mass matrix from the function defined in the ContinuousState Class
@@ -65,7 +67,8 @@ class StancePhaseState(AbstractPhaseState):
         # Calculated the Jaobian in the COM frame from the function defined in the ContinuousState Class
         J_com = state.jac_com()[0:2]
 
-        # calculates the vector b which acounts for coriolis and centrifugal force -> TODO: b is a generalized force -> why do we need to peoject it to the COG?
+        # calculates the vector b which acounts for coriolis and centrifugal force
+        # -> TODO: b is a generalized force -> why do we need to project it to the COG?
         b = np.zeros(model.q_size)
         rbdl.NonlinearEffects(model, q, qd, b)
 
@@ -76,10 +79,12 @@ class StancePhaseState(AbstractPhaseState):
         N_s = np.eye(4) - inv_mass_matrix @ jac_s.T @ lambda_s @ jac_s
 
         # update the nullspace_s in Hutter paper (8)
-        J_star = J_com @ inv_mass_matrix @ (S @ N_s).T @ np.linalg.inv(S @ N_s @ inv_mass_matrix @ (S @ N_s).T)  # TODO: check why pinv needed -> S was the problem! --> where was the pinv ? (question by Fabian)
+        J_star = J_com @ inv_mass_matrix @ (S @ N_s).T @ np.linalg.inv(S @ N_s @ inv_mass_matrix @ (
+                    S @ N_s).T)  # TODO: check why pinv needed -> S was the problem! --> where was the pinv ? (question by Fabian)
         J_star = J_star[0:2]
 
-        # update the inertia matrix s Hutter paper between (4) and (5) (changed to normal inv since it we also did that in the other code and it works here as well (Fabian)
+        # update the inertia matrix s Hutter paper between (4) and (5)
+        # (changed to normal inv since it we also did that in the other code and it works here as well (Fabian)
         lambda_star = np.linalg.pinv(J_com @ inv_mass_matrix @ (S @ N_s).T @ J_star.T)
         # lambda_star = np.linalg.inv(jac_s @ inv_mass_matrix @ S @ N_s @ jac_s.T) # problem with dimensions
 
@@ -89,18 +94,20 @@ class StancePhaseState(AbstractPhaseState):
             self.J_com_grad = self.calc_numerical_gradient(self.old_J_com, J_com, time_diff)
             self.J_s_grad = self.calc_numerical_gradient(self.old_J_s, jac_s, time_diff)
 
-        # update old Jacobian s in foot frame and Jacobian com in com frame and time for calculating the derivative in the next iteration
+        # update old Jacobian s in foot frame and Jacobian com in com frame
+        # and time for calculating the derivative in the next iteration
         self.old_J_com = J_com
         self.old_J_s = jac_s
 
-        # coriolis and centriugal part in tau calculation (mu_star) star Hutter paper (10)
+        # coriolis and centrifugal part in tau calculation (mu_star) star Hutter paper (10)
         term1 = lambda_star @ J_com @ inv_mass_matrix @ N_s.T @ b
         term2 = lambda_star @ self.J_com_grad @ qd
         term3 = lambda_star @ J_com @ inv_mass_matrix @ jac_s.T @ lambda_s @ self.J_s_grad @ state.qd
         coriolis_part = term1 - term2 + term3
 
         # gravitational part in tau calculation (p_star) star Hutter paper (11)
-        grav_part = lambda_star @ J_com @ inv_mass_matrix @ N_s.T @ np.array([0, 0, 9.81, 0]) #TODO use gravity variable
+        grav_part = lambda_star @ J_com @ inv_mass_matrix @ N_s.T @ np.array(
+            [0, 0, 9.81, 0])  # TODO use gravity variable
 
         # p_star and mu star added Hutter paper (12)
         coriolis_grav_part = coriolis_part + grav_part

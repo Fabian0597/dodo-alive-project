@@ -63,19 +63,21 @@ class FlightPhaseState(AbstractPhaseState):
     """
     controller during flight phase
     """
+
     def __init__(self, hybrid_automaton, constraint, desired_pos_com, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
         self.des_pos_com = desired_pos_com  # goal foot position (1 dimensional - x axis)
 
         # Position PI Controller for controlling velocity of com based on the com position (outer cascade)
-        self.max_pos = 1 #to clip the Integral part where the com position errors are summed up
-        self.max_vel = 1 #to clip the velocity (output of outer cascade)
+        self.max_pos = 1  # to clip the Integral part where the com position errors are summed up
+        self.max_vel = 1  # to clip the velocity (output of outer cascade)
         self.position_pi_ctr = PIDController(k_p=0.4, k_i=0.1, k_d=0)
 
         # Velocity adapted PI Controller for controlling the angle of attack based on the com velocity (middle cascade)
         self.max_angle_of_attack = 18  # in deg #to clip the angle of attack (output of middle cascade)
-        self.max_control_vel = 6 #to clip the Integral part where the com velocity errors are summed up
-        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d=0,k_c=5)  # TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
+        self.max_control_vel = 6  # to clip the Integral part where the com velocity errors are summed up
+        self.velocity_pid_ctr = PIDController(k_p=4, k_i=3.5, k_d=0,
+                                              k_c=5)  # TODO set k_d= 0 is ok if it is not used (PI controller)but needed in init?
         self.angle_of_attack = 0
 
         # Pose PID Controller for controlling the foot acceleration based on the angle of attack (inner cascade)
@@ -85,8 +87,7 @@ class FlightPhaseState(AbstractPhaseState):
         self.pos_error_grad = np.zeros(2) #differential foot position error
         self.previous_pos_error = None # last foot position error for numerical gradient
 
-        self.iteration_counter = 0 #counts number of iterations called be intergrator
-
+        self.iteration_counter = 0  # counts number of iterations called be integrator
 
     def controller_iteration(self, time, state):
         """
@@ -120,7 +121,8 @@ class FlightPhaseState(AbstractPhaseState):
 
     def position_controller(self, state: ContinuousState, des_pos):
         """
-        Outer cascade calculates the error between current and desired com position and calculates from there the desired com velocity
+        Outer cascade calculates the error between current and desired com position
+        and calculates from there the desired com velocity
         :param state: robot state
         :param des_pos: goal position of the com
         :return: desired com velocity
@@ -132,17 +134,19 @@ class FlightPhaseState(AbstractPhaseState):
 
         # Integral Part PID
         self.position_pi_ctr.i_error += p_error
-        self.position_pi_ctr.i_error = limit_value_to_max_abs(self.position_pi_ctr.i_error, self.max_pos) #clip summed up com position error
+        self.position_pi_ctr.i_error = limit_value_to_max_abs(self.position_pi_ctr.i_error,
+                                                              self.max_pos)  # clip summed up com position error
 
         # PID
         vel_des = self.position_pi_ctr.control_function(p_error=p_error)
-        vel_des = limit_value_to_max_abs(vel_des, self.max_vel) #clip output
+        vel_des = limit_value_to_max_abs(vel_des, self.max_vel)  # clip output
 
         return vel_des
 
     def velocity_controller(self, state: ContinuousState, vel_des):
         """
-        Middle cascade calculates the error between current and desired com velocity and calculates from there the desired angle of attack
+        Middle cascade calculates the error between current and desired com velocity
+        and calculates from there the desired angle of attack
         :param state: robot state
         :param vel_des: goal velocity of the com from outer cascade
         :return: desired angel of attack
@@ -153,26 +157,28 @@ class FlightPhaseState(AbstractPhaseState):
         p_error = (cur_vel - vel_des)
 
         # Integral Part of PID
-        self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error, self.max_control_vel) #clip summed up velocity error
+        self.velocity_pid_ctr.i_error = limit_value_to_max_abs(self.velocity_pid_ctr.i_error,
+                                                               self.max_control_vel)  # clip summed up velocity error
 
-        if self.iteration_counter % 5e14 == 0 or not self.angle_of_attack: # do not update controlled angle of attack every itertation to make PID control in inner cascade more stable
+        if self.iteration_counter % 5 == 0 or not self.angle_of_attack:  # do not update controlled angle of attack every itertation to make PID control in inner cascade more stable
             # PID
             self.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=cur_vel)
-            self.angle_of_attack = limit_value_to_max_abs(self.angle_of_attack, self.max_angle_of_attack) #clip output
-        return self.angle_of_attack
+            self.angle_of_attack = limit_value_to_max_abs(self.angle_of_attack, self.max_angle_of_attack)  # clip output
 
+        return self.angle_of_attack
 
     def pose_controller(self, time, state: ContinuousState, angle_of_attack):
         """
-        Inner cascade calculates the error between current and desired foot position and calculates from there the desired foot acceleration
-        :param time: current time step for diverential part in PID
+        Inner cascade calculates the error between current and desired foot position
+        and calculates from there the desired foot acceleration
+        :param time: current time step for differential part in PID
         :param state: robot state
         :param angle_of_attack: goal angle of attack from middle cascade
         :return: desired foot acceleration
         """
         angle_of_attack_rad = np.deg2rad(angle_of_attack)
 
-        #calculate the desired foot position from the angle of atack calculated in middle cascade and desired leg length for impact
+        # calculate the desired foot position from the angle of atack calculated in middle cascade and desired leg length for impact
         pos_foot_des = np.zeros(2)
         pos_foot_des[0] = state.pos_com()[0] + math.sin(angle_of_attack_rad) * self.local_leg_length_spring
         pos_foot_des[1] = state.pos_com()[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
@@ -184,7 +190,7 @@ class FlightPhaseState(AbstractPhaseState):
         # Proportional part PID
         pos_error = pos_foot_des - pos_foot
 
-        # Diverential part PID
+        # Differential part PID
         time_diff = time - self.last_iteration_time
         if time_diff > 0.01:
             self.pos_error_grad = self.calc_numerical_gradient(pos_error, self.previous_pos_error, time_diff)
@@ -193,7 +199,8 @@ class FlightPhaseState(AbstractPhaseState):
 
         # Integral part PID
         self.pose_pid_ctr.i_error += pos_error
-        self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error, self.i_max_control) #clip summed up foot position error
+        self.pose_pid_ctr.i_error = limit_value_to_max_abs(self.pose_pid_ctr.i_error,
+                                                           self.i_max_control)  # clip summed up foot position error
 
         # PID control
         jac_s = state.jac_s()
@@ -201,5 +208,3 @@ class FlightPhaseState(AbstractPhaseState):
         xdd = mass_matrix_ee_inv @ self.pose_pid_ctr.control_function(p_error=pos_error, scale_i_error=time_diff,
                                                                       d_error=vel_error)
         return xdd
-
-

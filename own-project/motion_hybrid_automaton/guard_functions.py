@@ -8,11 +8,12 @@ class GuardFunctions:
     """
     defines events which are used by ivp_solver which activates the transition between states
     """
-    def __init__(self, model, slip_model):
-        self.model = model # Lua leg model
-        self.slip_model = slip_model # parameter of leg mdoel
 
-        self.vel_threshold = 0.1 # treshhold for velocity check whether foot is moving towards or away from ground
+    def __init__(self, model, slip_model):
+        self.model = model  # Lua leg model
+        self.slip_model = slip_model  # parameter of leg model
+
+        self.vel_threshold = 0.1  # threshold for velocity check whether foot is moving towards or away from ground
 
     def flight_to_stance_guard_function(self):
         def g(time, x):
@@ -37,9 +38,9 @@ class GuardFunctions:
 
             base_vel_y = qd[1]
             if base_vel_y <= 0:  # make sure that the leg moves towards the ground
-                return foot_y # returns 0 if foot hits the ground
+                return foot_y  # returns 0 if foot hits the ground
             else:
-                return 1 # return 1 in order to not launch the event
+                return 1  # return 1 in order to not launch the event
 
         g.terminal = True
         return g
@@ -71,9 +72,9 @@ class GuardFunctions:
 
             base_vel_y = qd[1]
             if base_vel_y >= 0:  # make sure that the leg moves away from the ground
-                return self.slip_model.slip_length - slip_new_length # returns 0 if the spring length is bigger than l0
+                return self.slip_model.slip_length - slip_new_length  # returns 0 if the spring length is bigger than l0
             else:
-                return 1 # return 1 in order to not launch the event
+                return 1  # return 1 in order to not launch the event
 
         g.terminal = True
         return g

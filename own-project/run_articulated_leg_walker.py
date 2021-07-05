@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # initial and final time step for integrator
     t_final = 5
 
-    #init state machine
+    # init state machine
     model.state_machine.simulate_motion(t_final, init_state, model.log)
 
     # visualize the leg
