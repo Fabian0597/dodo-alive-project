@@ -75,7 +75,7 @@ class StancePhaseState(AbstractPhaseState):
         J_star = J_star[0:2]
 
         # update the inertia matrix s Hutter paper between (4) and (5) (changed to normal inv since it we also did that in the other code and it works here as well (Fabian)
-        lambda_star = np.linalg.inv(J_com @ inv_mass_matrix @ (S @ N_s).T @ J_star.T)
+        lambda_star = np.linalg.pinv(J_com @ inv_mass_matrix @ (S @ N_s).T @ J_star.T)
         # lambda_star = np.linalg.inv(jac_s @ inv_mass_matrix @ S @ N_s @ jac_s.T) # problem with dimensions
 
         # calculate derivative of Jacobian s in foot frame and Jacobian com in com frame

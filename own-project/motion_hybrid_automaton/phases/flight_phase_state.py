@@ -65,7 +65,7 @@ class FlightPhaseState(AbstractPhaseState):
         # Pose PID Controller
         self.local_leg_length_spring = 0.9  # TODO 0.9
         self.i_max_control = 0.5 * np.ones((2))
-        self.pose_pid_ctr = PIDController(k_p=2000, k_i=0, k_d=-30, init_i_error=np.zeros(2))  # (k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
+        self.pose_pid_ctr = PIDController(k_p=200, k_i=0, k_d=-40, init_i_error=np.zeros(2))  #-16# (k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
         self.angle_of_attack = 0
         self.pos_error_grad = np.zeros(2)
 
@@ -170,6 +170,7 @@ class FlightPhaseState(AbstractPhaseState):
             self.angle_of_attack = self.velocity_pid_ctr.control_function(p_error=p_error, c_error=vel_com_x)
             self.angle_of_attack = limit_value_to_max_abs(self.angle_of_attack, self.max_angle_of_attack)
         return self.angle_of_attack
+
 
     def pose_controller(self, time, state: ContinuousState, angle_of_attack):
         # POSE/LEG CONTROLLER

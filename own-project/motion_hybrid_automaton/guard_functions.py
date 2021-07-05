@@ -60,13 +60,13 @@ class GuardFunctions:
             state = ContinuousState(self.model, x)
             distance_foot_com = state.pos_com() - foot_pos
             slip_new_length = np.linalg.norm(distance_foot_com, ord=2)
-            """
+
             base_vel_y = qd[1]
             if base_vel_y >= 0:  # make sure that the leg moves away from the ground
                 return self.slip_model.slip_length - slip_new_length
             else:
                 return 1
-            """
-            return self.slip_model.slip_length - slip_new_length
+
+            #return self.slip_model.slip_length - slip_new_length
         g.terminal = True
         return g

@@ -120,12 +120,12 @@ if __name__ == "__main__":
 
     # q : The model's initial position (x_cog, y_cog) and angles between links (J1, J2) i set
     # qd: The model's initial velocity is 0.
-    q_init = np.array([0.0, 2.5, 0.01, 0.01])# np.deg2rad(55), np.deg2rad(-100)])
+    q_init = np.array([0.0, 1.5, 0.01, 0.01])# np.deg2rad(55), np.deg2rad(-100)])
     qd_init = np.array([0, 0, 0, 0])
     init_state = np.concatenate((q_init, qd_init))
 
     # initial and final time step for integrator
-    t_final = 2
+    t_final = 5
 
     model.state_machine.simulate_motion(t_final, init_state, model.log)
 
