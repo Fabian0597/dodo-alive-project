@@ -21,25 +21,32 @@ class StancePhaseState(AbstractPhaseState):
     def __init__(self, hybrid_automaton, constraint, guard_functions):
         super().__init__(hybrid_automaton, constraint, guard_functions)
 
-        self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
-        self.old_J_com = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float)
-        self.J_com_grad = np.zeros(self.old_J_com.shape)
-        self.J_s_grad = np.zeros(self.old_J_s.shape)
+        self.old_J_s = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float) # old J_s for numerical gradient
+        self.J_s_grad = np.zeros(self.old_J_s.shape) # numerical gradient for J_s
+
+        self.old_J_com = np.array([[1, 1, 1, 1, ], [1, 1, 1, 1, ]], dtype=float) # old J_com for numerical gradient
+        self.J_com_grad = np.zeros(self.old_J_com.shape) # numerical gradient of J_com
 
     def controller_iteration(self, time, state: ContinuousState):
+        """
+        performs iteration for the controller of the stance phase.
+        SLIP motion control law for any arbitrary robotic leg
+        :param time: current time
+        :param state: robot state
+        :return: tau to control the robot torques
+        """
         model = self.model
         q = state.q
         qd = state.qd
         gravity = model.gravity
 
-        # Js fußpunkt 2ter link -> point ist fußspitze (die in kontakt mit boden ist)
-
+        # position of foot
         footpos = rbdl.CalcBodyToBaseCoordinates(model, q, model.GetBodyId("foot"), np.zeros(3), False)
 
-        # Jacobian in foot frame (TODO: in old skript jac_s was Jacobian_foot-Jacobian_base)
+        # Jacobian in foot frame from the function defined in the ContinuousState Class (TODO: in old skript jac_s was Jacobian_foot-Jacobian_base)
         jac_s = state.jac_s()
 
-        # mass matrix and inverse of mass matrix
+        # inverse mass matrix from the function defined in the ContinuousState Class
         inv_mass_matrix = state.inv_mass_matrix()
 
         # actuation matrix S (tau_1 = q_3, tau_2 = q_4)
@@ -47,15 +54,11 @@ class StancePhaseState(AbstractPhaseState):
         S[0, 2] = 1
         S[1, 3] = 1
 
-
-        # Calculated the position of the COM from the function defined in the ContinuousState Class
+        # Calculated position of the COM from the function defined in the ContinuousState Class
         pos_com = state.pos_com()
 
+        # Calculated robot mass from the function defined in the ContinuousState Class
         robot_mass = state.robot_mass()
-
-        #if pos_com is None: # TODO: not used ??
-        #    pos_com = self.com_heights[-1]
-
 
         # Calculated the Jaobian in the COM frame from the function defined in the ContinuousState Class
         J_com = state.jac_com()[0:2]
@@ -107,14 +110,12 @@ class StancePhaseState(AbstractPhaseState):
         # compression of the foot calculated with l_0 length of leg and current length of leg
         spring_compression = self.slip_model.slip_length - slip_new_length
 
+        # calculate spring force
         if spring_compression < 0:  # extended leg/ spring
-            spring_compression = 0  # do not set negative forces -> energy loss
-
             # set slip force to zero
             self.slip_model.slip_force = np.zeros(3)
             slip_force = np.zeros(2)
         else:  # compressed leg/ spring
-
             # calculate slip force from spring stiffness and spring compression,
             # separate in x, y direction to keep force direction
             spring_compression_vec = np.array([
@@ -129,45 +130,8 @@ class StancePhaseState(AbstractPhaseState):
         # torque applied during stance phase to oppose coriolis and centrifugal and gravitational force
         coriolis = J_star.T @ coriolis_grav_part
 
+        # final torque
         tau = np.zeros(8)
         tau[2:4] = coriolis + torque_new
 
         return tau
-
-    def controller_iteration_old(self, iteration_counter: int, time, timestep: float):
-        """
-        performs iteration for the controller of the stance phase.
-        This simulates a mass-spring system (SLIP)
-        :param iteration_counter: iteration for counter of the solver
-        :param timestep: timestep of the current iteration
-        :param math_model: reference to the math_model
-        :return: torque (tau) from the controller (state of the robot's leg)
-        """
-
-        if not self.slip_model.impact:  # impact of the foot / start of stance phase
-            self.slip_model.impact_com = self.slip_model.pos_com
-            self.slip_model.impact = True
-            self.slip_model.first_iteration_after_impact = True
-            self.slip_model.vel_com_start_stance = self.slip_model.vel_com  # where do we need that?
-
-            # Energy compensation for impact at landing (kinetic energy loss of the cog point in the collision)
-            mass = self.slip_model.robot_mass
-            qd = self.slip_model.state.qd
-            jac_cog = self.slip_model.jac_cog
-            nullspace_s = self.slip_model.nullspace_s
-            matrix_diff = jac_cog.transpose() @ jac_cog - nullspace_s.transpose() @ jac_cog.transpose() @ jac_cog @ nullspace_s
-            vel_com_diff = qd.transpose() @ matrix_diff @ qd
-            delta_e_kin = abs(0.5 * mass * vel_com_diff)
-
-            self.slip_model.leg_length_delta = np.sqrt(2 * delta_e_kin / self.slip_model.spring_stiffness)
-
-            self.slip_model.update()
-
-        # new generalized velocity after impact
-        self.slip_model.state.qd = self.slip_model.nullspace_s @ self.slip_model.state.qd
-
-        tau_stance = self.slip_model.jac_star.transpose() @ self.slip_model.spaceControlForce
-
-        print("tau_stance: %s" % tau_stance.flatten())  # why is this matrix?
-
-        return tau_stance.flatten()
