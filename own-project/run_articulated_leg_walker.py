@@ -122,7 +122,7 @@ if __name__ == "__main__":
     init_state = np.concatenate((q_init, qd_init))
 
     # initial and final time step for integrator
-    t_final = 5
+    t_final = 3
 
     # init state machine
     model.state_machine.simulate_motion(t_final, init_state, model.log)

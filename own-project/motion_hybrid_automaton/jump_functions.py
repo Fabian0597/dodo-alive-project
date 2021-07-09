@@ -45,8 +45,7 @@ class JumpFunctions:
         foot_id = self.model.GetBodyId('foot')
         foot_pos = rbdl.CalcBodyToBaseCoordinates(self.model, state.q, foot_id, np.zeros(3), True)
         com_pos = state.pos_com()
-        l0_before_impact = np.sum(com_pos - foot_pos)
-
+        l0_before_impact = np.linalg.norm(com_pos - foot_pos)
 
         # switch to a model with new leg length which compensates the impact in Hutter paper block after (17)
         self.slip_model.slip_length = l0_before_impact + delta_leg_length

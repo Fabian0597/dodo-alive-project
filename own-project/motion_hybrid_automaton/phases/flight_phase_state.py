@@ -81,7 +81,6 @@ class FlightPhaseState(AbstractPhaseState):
         self.angle_of_attack = 0
 
         # Pose PID Controller for controlling the foot acceleration based on the angle of attack (inner cascade)
-        self.local_leg_length_spring = 0.9  # controls the desired leg length for the impact
         self.i_max_control = 0.5 * np.ones(2)  # to clip the Integral part where the foot position errors are summed up
         self.pose_pid_ctr = PIDController(k_p=1020, k_i=100, k_d=70, init_i_error=np.zeros(2))
         self.pos_error_grad = np.zeros(2)  # differential foot position error
@@ -180,8 +179,8 @@ class FlightPhaseState(AbstractPhaseState):
 
         # calculate the desired foot position from the angle of atack calculated in middle cascade and desired leg length for impact
         pos_foot_des = np.zeros(2)
-        pos_foot_des[0] = state.pos_com()[0] + math.sin(angle_of_attack_rad) * self.local_leg_length_spring
-        pos_foot_des[1] = state.pos_com()[1] - math.cos(angle_of_attack_rad) * self.local_leg_length_spring
+        pos_foot_des[0] = state.pos_com()[0] + math.sin(angle_of_attack_rad) * self.slip_model.slip_length_zero
+        pos_foot_des[1] = state.pos_com()[1] - math.cos(angle_of_attack_rad) * self.slip_model.slip_length_zero
 
         # current foot position
         foot_id = self.model.GetBodyId("foot")
