@@ -16,11 +16,11 @@ nullMatrix = {
 
 
 print("Lua: Body mass and geometry properties")
-linkProperties= {   mass    = 1., 
+linkProperties= {   mass    = 0.05,
                     com     = {0.,-1.,0.}, 
                     inertia = inertiaMatrix}
 
-baseProperties= {   mass    = 10.,
+baseProperties= {   mass    = 11.9,
                     com     = {0.,0.,0.},
                     inertia = nullMatrix}
 footProperties= {   mass    = 0.001,

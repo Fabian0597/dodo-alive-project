@@ -12,9 +12,9 @@ class JumpFunctions:
     defines the transition between stance and flight phase. Energy compensation from flight to stance
     """
     def __init__(self, motion_hybrid_automaton):
-        self.model = motion_hybrid_automaton.model # lua leg model
-        self.slip_model = motion_hybrid_automaton.slip_model # leg model parameter
-        self.motion_hybrid_automaton = motion_hybrid_automaton # state machine
+        self.model = motion_hybrid_automaton.model  # lua leg model
+        self.slip_model = motion_hybrid_automaton.slip_model  # leg model parameter
+        self.motion_hybrid_automaton = motion_hybrid_automaton  # state machine
 
     def _calculate_new_slip_length(self, state):
         # TODO check the Force is towards ground at the beginning of stance phase
@@ -44,12 +44,11 @@ class JumpFunctions:
 
         foot_id = self.model.GetBodyId('foot')
         foot_pos = rbdl.CalcBodyToBaseCoordinates(self.model, state.q, foot_id, np.zeros(3), True)
-        com_pos = state.pos_com()
-        l0_before_impact = np.linalg.norm(com_pos - foot_pos)
+        pos_com = state.pos_com()
+        l0_before_impact = np.linalg.norm(pos_com - foot_pos)
 
         # switch to a model with new leg length which compensates the impact in Hutter paper block after (17)
         self.slip_model.slip_length = l0_before_impact + delta_leg_length
-
 
     def flight_to_stance_jump_function(self, time, x):
         """
@@ -71,6 +70,7 @@ class JumpFunctions:
         rbdl.ComputeConstraintImpulsesDirect(self.model, x[:self.model.dof_count], x[self.model.dof_count:],
                                              self.motion_hybrid_automaton.current_constraint(),
                                              qd_plus)
+
         # update general velocity in robot state space x = [q, qd]
         x[self.model.dof_count:] = qd_plus
         return time, x

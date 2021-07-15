@@ -119,19 +119,13 @@ class StancePhaseState(AbstractPhaseState):
         # compression of the foot calculated with l_0 length of leg and current length of leg
         spring_compression = self.slip_model.slip_length - slip_new_length
 
-        # calculate spring force
-        if spring_compression < 0:  # extended leg/ spring
-            # set slip force to zero
-            self.slip_model.slip_force = np.zeros(3)
-            slip_force = np.zeros(2)
-        else:  # compressed leg/ spring
-            # calculate slip force from spring stiffness and spring compression,
-            # separate in x, y direction to keep force direction
-            spring_compression_vec = np.array([
-                spring_compression * np.cos(angle), spring_compression * np.sin(angle), 0])
-            slip_force = self.slip_model.slip_stiffness * spring_compression_vec + robot_mass * gravity
-            self.slip_model.slip_force = slip_force
-            slip_force = slip_force[0:2]
+        # calculate slip force from spring stiffness and spring compression,
+        # separate in x, y direction to keep force direction
+        spring_compression_vec = np.array([
+            spring_compression * np.cos(angle), spring_compression * np.sin(angle), 0])
+        slip_force = self.slip_model.slip_stiffness * spring_compression_vec + robot_mass * gravity
+        self.slip_model.slip_force = slip_force
+        slip_force = slip_force[0:2]
 
         # Control law
         # torque applied during stance phase to generate the slip force

@@ -28,12 +28,13 @@ class ModelSimulation:
     """
     create leg model and its constraints, start state machine, visualize leg
     """
+
     def __init__(self, leg_model_path, des_com_pos, show_gui):
 
         logging.debug("Loading rbdl leg model")
-        self.leg_model = rbdl.loadModel(leg_model_path) #lua model
+        self.leg_model = rbdl.loadModel(leg_model_path)  # lua model
 
-        self.dof_count = self.leg_model.qdot_size # get size of the generalized coordinates
+        self.dof_count = self.leg_model.qdot_size  # get size of the generalized coordinates
 
         logging.debug("set constraints")
 
@@ -45,7 +46,6 @@ class ModelSimulation:
         self.constraint_set_stance.AddContactConstraint(self.leg_model.GetBodyId("foot"), np.zeros(3), y_plane)
         self.constraint_set_stance.Bind(self.leg_model)
 
-
         # flight phase constraints
         self.constraint_set_flight = rbdl.ConstraintSet()
         """
@@ -53,7 +53,6 @@ class ModelSimulation:
         self.constraint_set_flight.AddContactConstraint(self.leg_model.GetBodyId("floatingBase"), np.zeros(3), y_plane)
         """
         self.constraint_set_flight.Bind(self.leg_model)
-
 
         logging.debug("init gui robot plotter")
         self.show_gui = show_gui
@@ -71,7 +70,8 @@ class ModelSimulation:
         self.ffcsv = open(basefolder + '/forces.ff', 'w')
 
         logging.debug("init Motion State Machine")
-        self.state_machine = MotionHybridAutomaton(self.leg_model, des_com_pos, self.constraint_set_flight, self.constraint_set_stance,
+        self.state_machine = MotionHybridAutomaton(self.leg_model, des_com_pos, self.constraint_set_flight,
+                                                   self.constraint_set_stance,
                                                    self.robot_plotter)
 
     def log(self, time, q):
@@ -104,9 +104,8 @@ class ModelSimulation:
 
 
 if __name__ == "__main__":
-
     # one dimensional goal position of center of mass (com)
-    des_com_pos = 0
+    des_com_pos = 3
 
     # init leg model simulation
     model = ModelSimulation(
@@ -122,7 +121,7 @@ if __name__ == "__main__":
     init_state = np.concatenate((q_init, qd_init))
 
     # initial and final time step for integrator
-    t_final = 3
+    t_final = 10
 
     # init state machine
     model.state_machine.simulate_motion(t_final, init_state, model.log)

@@ -8,6 +8,7 @@ from scipy.integrate import solve_ivp
 
 from motion_hybrid_automaton.guard_functions import GuardFunctions
 from motion_hybrid_automaton.jump_functions import JumpFunctions
+from solver.solver import SolverIVP, OwnSolverRK45
 
 """
 import sys
@@ -69,6 +70,10 @@ class MotionHybridAutomaton:
 
         self.z = DiscreteState.FLIGHT  #discrete state
 
+        # choose a solver
+        # self.solver = SolverIVP()
+        self.solver = OwnSolverRK45(step_size=5e-4)
+
     def current_constraint(self):
         """
         get constraints of active state
@@ -91,26 +96,27 @@ class MotionHybridAutomaton:
             # Solve an initial value problem for a system of ordinary differential equations (ode)
             # Interval of integration (t_init,, t_final).
             # state = initial state
-            # function to be integrated = flow function of active state which includes the systems dynamics and phase controller
-            # ivp solver numerically integrates a system of ordinary differential equations until event touchdown_event(y,t)=0 or t = t_final
+            # function to be integrated = flow function of active state
+            # which includes the systems dynamics and phase controller
+            # ivp solver numerically integrates a system of ordinary differential equations
+            # until event touchdown_event(y,t)=0 or t = t_final
 
             # active discrete state
             active_state = self.states[self.z]
 
-            #ivp_solver
-            solver = solve_ivp(
+            # solve dynamics for current discrete state
+            times, states = self.solver.integrate(
                 fun=active_state.flow_function,
-                t_span=[time, t_final], y0=x,
-                max_step=0.2,
-                events=active_state.events
+                t_span=[time, t_final], x0=x,
+                events=active_state.events,
             )
             # get the last state, time from previous iteration as initial state, time for next iteration
-            time, x = solver.t[-1], solver.y.T[-1]
+            time, x = times[-1], states[-1]
 
             # iterate over internal states saved by the solver during integration and log those for visualization
-            for i in range(0, len(solver.t)):
-                time = solver.t[i]  # time stamp T[i]
-                x_t = solver.y.T[i][:self.model.dof_count]  # state and state velocity at time T[i]
+            for i in range(0, len(times)):
+                time = times[i]  # time stamp T[i]
+                x_t = states[i][:self.model.dof_count]  # state and state velocity at time T[i]
                 log_callback(time, x_t)  # log
 
             # transition to next discrete state
