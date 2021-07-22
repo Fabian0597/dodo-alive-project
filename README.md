@@ -1,5 +1,10 @@
 # Dodo Alive Project
 
+## Introduction
+In this Project a SLIP model was projected onto the dynamics of an robotic articulated leg. The articulated leg is simulated as a LUA model. RBDL, a library for efficient rigid body dynamics algorithms is used for calculating Jacobians, transformations between coordiante frames, forward dynamics, computing the contact gain for the ground impact, constraining motion and position in the stance phase. For visualization, we will use MeshUp; a tool that was developed with RBDL.
+
+
+
 ## Setup the Project
 
 ```
