@@ -20,7 +20,7 @@ A spring-loaded-inverted-pendulum (SLIP) models the leg with a mass-less spring 
 We sparate the control laws in the flight phase from that in the stance phase. For the flight phase a cascade control using PI and PID contoller is used. For the stance phase a SLIP model control ĺaw is used.
 
 ### Flight control
-During flight the leg length l_{0} and the landing angle \alpha 
+During flight the leg length \[l_{0}] and the landing angle \alpha 
 
 ## Setup the Project
 
