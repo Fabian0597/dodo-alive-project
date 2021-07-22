@@ -22,6 +22,16 @@ We sparate the control laws in the flight phase from that in the stance phase. F
 ### Flight control
 During flight the leg length and the landing angle are held constant. For this a cascade control using two PI and one PID controller are used.
 
+<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
+  <tr>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.pdf " width="800"/></td>
+  </tr>
+  <tr>
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> jumping robot.
+    </td>
+  </tr>
+</table>
+
 ### Stance control
 When touching the ground, the SLIP dynamiucs ca be projected onto the CoG motion of the robotic leg. From there we can calculate the required joint actuator torques in order to generate the necessary operational space forces.  
 
