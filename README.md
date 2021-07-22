@@ -24,7 +24,7 @@ During flight the leg length and the landing angle are held constant. For this a
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.pdf " width="800"/></td>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="800"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>GIF 1:</b> jumping robot.
