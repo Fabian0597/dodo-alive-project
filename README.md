@@ -27,13 +27,16 @@ During flight the leg length and the landing angle are held constant. For this a
     <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="800"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> jumping robot.
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> cascade contol.
     </td>
   </tr>
 </table>
 
 ### Stance control
-When touching the ground, the SLIP dynamiucs ca be projected onto the CoG motion of the robotic leg. From there we can calculate the required joint actuator torques in order to generate the necessary operational space forces.  
+When touching the ground, the SLIP dynamiucs ca be projected onto the CoG motion of the robotic leg. From there we can calculate the required joint actuator torques in order to generate the necessary operational space forces.
+
+## Energy compensation
+In comparison to a SLIP model with a mass-less spring, real robots are influenced from the impact when the leg strikes the ground. This is the reason why the velocity of the CoG of the robot changes trhough the transition from flight to stance. This corresponds to a loss of kinetic energy. In the modified SLIP model with impact compensation the spring leg is pre-compressed at touch down. The energy stored in the precompressed spring equals the kinetic enegry loss. In the following implementation the modifed SLIP model is used.
 
 ## Setup the Project
 
