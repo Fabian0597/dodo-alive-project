@@ -1,7 +1,7 @@
 # Dodo Alive Project
 
 ## Introduction
-In this Project a SLIP model was projected onto the dynamics of an robotic articulated leg. The articulated leg is simulated as a LUA model. RBDL, a library for efficient rigid body dynamics algorithms is used for calculating Jacobians, transformations between coordiante frames, forward dynamics, computing the contact gain for the ground impact, constraining motion and position in the stance phase. For visualization, we will use MeshUp; a tool that was developed with RBDL.
+In this Project a SLIP model was projected onto the dynamics of an robotic articulated leg. The articulated leg is simulated as a LUA model. In our project the RBDL library, which offers efficient rigid body dynamics algorithms is used. For visualization, we will use MeshUp; a tool that was developed with RBDL.
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
@@ -12,6 +12,15 @@ In this Project a SLIP model was projected onto the dynamics of an robotic artic
     </td>
   </tr>
 </table>
+
+## SLIP model
+A spring-loaded-inverted-pendulum (SLIP) models the leg with a mass-less spring of resting length of l0 and a stiffness k. A point mass is attached at the top of the spring. In the flight phase, the SLIP model follows the law of gravity, and moving on a a parabolic trajectory. When touching the ground the motion of the center of gravity (CoG) is redirected by the spring force in the leg, which acts between the foot contact point and the CoG. SLIP model are very simple and abstract descriptions of the spring-leg behaviour in human running. We can make use of this model by appyling the conntrol applied to the SLIP model onto the dynamics of an actual segmented robotic leg. This enables dead-beat control strategies for those robotic legs.
+
+## Control law 
+We sparate the control laws in the flight phase from that in the stance phase. For the flight phase a cascade control using PI and PID contoller is used. For the stance phase a SLIP model control ĺaw is used.
+
+### Flight control
+During flight the leg length l_{0} and the landing angle \alpha 
 
 ## Setup the Project
 
