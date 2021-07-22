@@ -3,7 +3,15 @@
 ## Introduction
 In this Project a SLIP model was projected onto the dynamics of an robotic articulated leg. The articulated leg is simulated as a LUA model. RBDL, a library for efficient rigid body dynamics algorithms is used for calculating Jacobians, transformations between coordiante frames, forward dynamics, computing the contact gain for the ground impact, constraining motion and position in the stance phase. For visualization, we will use MeshUp; a tool that was developed with RBDL.
 
-
+<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
+  <tr>
+    <td style="width: 48%;"> <img src="document/ressources/jumping_rk45.gif " width="800"/></td>
+  </tr>
+  <tr>
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> jumping robot.
+    </td>
+  </tr>
+</table>
 
 ## Setup the Project
 
