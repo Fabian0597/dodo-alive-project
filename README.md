@@ -14,7 +14,10 @@ In this Project a SLIP model was projected onto the dynamics of an robotic artic
 </table>
 
 ## SLIP model
-A spring-loaded-inverted-pendulum (SLIP) models the leg with a mass-less spring of resting length of l0 and a stiffness k. A point mass is attached at the top of the spring. In the flight phase, the SLIP model follows the law of gravity, and moving on a a parabolic trajectory. When touching the ground the motion of the center of gravity (CoG) is redirected by the spring force in the leg, which acts between the foot contact point and the CoG. SLIP model are very simple and abstract descriptions of the spring-leg behaviour in human running. We can make use of this model by appyling the conntrol applied to the SLIP model onto the dynamics of an actual segmented robotic leg. This enables dead-beat control strategies for those robotic legs.
+A spring-loaded-inverted-pendulum (SLIP) models the leg with a mass-less spring of resting length of l0 and a stiffness k. A point mass is attached at the top of the spring. In the flight phase, the SLIP model follows the law of gravity, and moving on a a parabolic trajectory. When touching the ground the motion of the center of gravity (CoG) is redirected by the spring force in the leg, which acts between the foot contact point and the CoG. SLIP model are very simple and abstract descriptions of the spring-leg behaviour in human running. We can make use of this model by appyling the conntrol applied to the SLIP model onto the dynamics of an actual segmented robotic leg. The low level SLIP model generates a reference trajectory which is tracked in the high level robot model. Feedback control can be used to adapt to perturbation. Since the SLIP model is a conservative system the forward speed and the apex height, which charercterize the trajectory are coupled. The stability problem is therfore reduced to one dimesion and the SLIP model can be solely controlled by the landing angle.
+
+## Energy compensation
+In comparison to a SLIP model with a mass-less spring, real robots are influenced from the impact when the leg strikes the ground. This is the reason why the velocity of the CoG of the robot changes trhough the transition from flight to stance. This corresponds to a loss of kinetic energy. In the modified SLIP model with impact compensation the spring leg is pre-compressed at touch down. The energy stored in the precompressed spring equals the kinetic enegry loss. In the following implementation the modifed SLIP model is used. We used the paper "Hutter et al. 2010 - SLIP running with an Articulated Robotic Leg" as orientation.
 
 ## Control law 
 We sparate the control laws in the flight phase from that in the stance phase. For the flight phase a cascade control using PI and PID contoller is used. For the stance phase a SLIP model control ĺaw is used.
@@ -33,10 +36,14 @@ During flight the leg length and the landing angle are held constant. For this a
 </table>
 
 ### Stance control
-When touching the ground, the SLIP dynamiucs ca be projected onto the CoG motion of the robotic leg. From there we can calculate the required joint actuator torques in order to generate the necessary operational space forces.
+When touching the ground, the SLIP dynamiucs can be projected onto the CoG motion of the robotic leg. From there we can calculate the required joint actuator torques in order to generate the necessary operational space forces. We used the paper "Hutter et al. 2010 - SLIP running with an Articulated Robotic Leg" as orientation.
 
-## Energy compensation
-In comparison to a SLIP model with a mass-less spring, real robots are influenced from the impact when the leg strikes the ground. This is the reason why the velocity of the CoG of the robot changes trhough the transition from flight to stance. This corresponds to a loss of kinetic energy. In the modified SLIP model with impact compensation the spring leg is pre-compressed at touch down. The energy stored in the precompressed spring equals the kinetic enegry loss. In the following implementation the modifed SLIP model is used.
+
+## Solver
+In the forward dynamics the generalized accelerations are calculated from the generalized velocities, the generalized coordinates and the torques calculated in the controller. This step-wise integration is repeated until a transition from the flight to the stance phase or from stance to the flight phase is reached. To integrate the generalized accelerations two different solvers were implemented. The ivp_solver from scipy integrates with a varible stepsize. Root-finding helps to find the exact state transition. The RKF45 is an algorithm for the numerical solution of ordinary differential equations. It is implemented with a fixed step size. The PID controller in the stance control works a lot better with a fixed step size. In combination with the ivp_solver it was unstable.
+
+##Structure
+An automaton was used to capture the robot state. It contains a continous state (generalized coordinates), which consists of the  coordinates of the floating base in the 3D space, the hip angle and knee angle. It also contains the discrete state, which describes whether the robot is in the flight or stance phase. The transitions between these states are described through events. For each of these two discrete states an own controller class is implemented, which are described above.
 
 ## Setup the Project
 
