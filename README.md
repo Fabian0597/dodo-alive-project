@@ -30,7 +30,7 @@ During flight the leg length and the landing angle are held constant. For this a
     <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="800"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> cascade contol.
+    <td style="width: 48%;" valign="top"> <b>IMG 1:</b> cascade contol.
     </td>
   </tr>
 </table>
@@ -40,27 +40,27 @@ When touching the ground, the SLIP dynamiucs can be projected onto the CoG motio
 
 
 ## Solver
-In the forward dynamics the generalized accelerations are calculated from the generalized velocities, the generalized coordinates and the torques calculated in the controller. This step-wise integration is repeated until a transition from the flight to the stance phase or from stance to the flight phase is reached. To integrate the generalized accelerations two different solvers were implemented. The ivp_solver from scipy integrates with a varible stepsize. Root-finding helps to find the exact state transition. The RKF45 is an algorithm for the numerical solution of ordinary differential equations. It is implemented with a fixed step size. The PID controller in the stance control works a lot better with a fixed step size. In combination with the ivp_solver it was unstable.
+In the forward dynamics the generalized accelerations are calculated from the generalized velocities, the generalized coordinates and the torques calculated in the controller. This step-wise integration is repeated until a transition from the flight to the stance phase or from stance to the flight phase is reached. To integrate the generalized accelerations two different solvers were implemented. The ivp_solver from scipy integrates with a varible stepsize. Root-finding helps to find the exact state transition. The RKF45 is an algorithm for the numerical solution of ordinary differential equations. It is implemented with a fixed step size. The PID controller in the stance control works a lot better with a fixed step size. It can be seen that the RKF45 integrator from GIF 1 works a lot more stable than the ivp_solver shown in GIF 2.
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
     <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_ivp.gif " width="800"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with ivp_solver.
+    <td style="width: 48%;" valign="top"> <b>GIF 2:</b> articulated leg with ivp_solver.
     </td>
   </tr>
 </table>
 
-##Structure
+## Structure
 An automaton was used to capture the robot state. It contains a continous state (generalized coordinates), which consists of the  coordinates of the floating base in the 3D space, the hip angle and knee angle. It also contains the discrete state, which describes whether the robot is in the flight or stance phase. The transitions between these states are described through events. For each of these two discrete states an own controller class is implemented, which are described above.
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/class_structure.png " width="800"/></td>
+    <td style="width: 28%;"> <img src="own-project/document/ressources/class_structure.png " width="800"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with RKF45 integrator.
+    <td style="width: 28%;" valign="top"> <b>IMG 2:</b> articulated leg with RKF45 integrator.
     </td>
   </tr>
 </table>
