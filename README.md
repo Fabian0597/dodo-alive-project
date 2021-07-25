@@ -5,7 +5,7 @@ In this Project a SLIP model was projected onto the dynamics of an robotic artic
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_RK45.gif " width="800"/></td>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_RK45.gif " width="700"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with RKF45 integrator.
@@ -27,7 +27,7 @@ During flight the leg length and the landing angle are held constant. For this a
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="800"/></td>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="600"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>IMG 1:</b> cascade contol.
@@ -57,7 +57,7 @@ An automaton was used to capture the robot state. It contains a continous state 
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="500"/></td>
+    <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="600"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>IMG 2:</b> articulated leg with RKF45 integrator.
