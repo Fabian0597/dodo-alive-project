@@ -57,10 +57,10 @@ An automaton was used to capture the robot state. It contains a continous state 
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 28%;"> <img src="own-project/document/ressources/class_structure.png " width="800"/></td>
+    <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="500"/></td>
   </tr>
   <tr>
-    <td style="width: 28%;" valign="top"> <b>IMG 2:</b> articulated leg with RKF45 integrator.
+    <td style="width: 48%;" valign="top"> <b>IMG 2:</b> articulated leg with RKF45 integrator.
     </td>
   </tr>
 </table>
