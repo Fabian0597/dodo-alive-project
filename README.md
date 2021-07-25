@@ -8,7 +8,7 @@ In this Project a SLIP model was projected onto the dynamics of an robotic artic
     <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_RK45.gif " width="800"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> jumping robot.
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with RKF45 integrator.
     </td>
   </tr>
 </table>
@@ -42,8 +42,28 @@ When touching the ground, the SLIP dynamiucs can be projected onto the CoG motio
 ## Solver
 In the forward dynamics the generalized accelerations are calculated from the generalized velocities, the generalized coordinates and the torques calculated in the controller. This step-wise integration is repeated until a transition from the flight to the stance phase or from stance to the flight phase is reached. To integrate the generalized accelerations two different solvers were implemented. The ivp_solver from scipy integrates with a varible stepsize. Root-finding helps to find the exact state transition. The RKF45 is an algorithm for the numerical solution of ordinary differential equations. It is implemented with a fixed step size. The PID controller in the stance control works a lot better with a fixed step size. In combination with the ivp_solver it was unstable.
 
+<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
+  <tr>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_ivp.gif " width="800"/></td>
+  </tr>
+  <tr>
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with ivp_solver.
+    </td>
+  </tr>
+</table>
+
 ##Structure
 An automaton was used to capture the robot state. It contains a continous state (generalized coordinates), which consists of the  coordinates of the floating base in the 3D space, the hip angle and knee angle. It also contains the discrete state, which describes whether the robot is in the flight or stance phase. The transitions between these states are described through events. For each of these two discrete states an own controller class is implemented, which are described above.
+
+<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
+  <tr>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/class_structure.png " width="800"/></td>
+  </tr>
+  <tr>
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with RKF45 integrator.
+    </td>
+  </tr>
+</table>
 
 ## Setup the Project
 
