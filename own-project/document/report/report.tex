@@ -45,6 +45,7 @@ Report: SLIP models for controlling articulated robotic legs
 %\begin{abstract} TODOabstract \end{abstract}
 
 \section{Introduction}
+\label{sec:Introduction}
 
 
 Bio inspired robotics and especially humanoid robots play an increasing role in society and science. Robotic solutions with a structural 
@@ -68,6 +69,7 @@ For visualization Meshup, a tool that was developed with RBDL is used.
 
 
 \section{SLIP model}
+\label{sec:SLIP model}
 The SLIP model is an abstraction capturing the locomotion behavior of robots with light, compliant legs. In this model the body is reduced to a point mass \( m \). The
 leg is represented by a massless spring with stiffness \({k}_0 \) and a rest length \({l}_0 \). For this system the equations of motion are the following:
 \begin{equation}
@@ -76,7 +78,8 @@ leg is represented by a massless spring with stiffness \({k}_0 \) and a rest len
    +
    \begin{bmatrix} 0 \\ mg \end{bmatrix}
    =
-   \begin{bmatrix} {F}_{x} \\ {F}_{y} \end{bmatrix}
+   \begin{bmatrix} {F}_{x} \\ {F}_{y} \end{bmatrix},
+   \label{eq:equation of motion}
 \end{equation}
 
 where x and y are the coordinates of the center of mass (COM). \({F}_x \) and \({F}_y \) are the ground reaction forces (GRF). The GRFs are 0 during flight and depend 
@@ -86,7 +89,7 @@ on the length of the spring \(l\) during compression and the landing angle \(\al
    \begin{bmatrix} {F}_{x}  \\ {F}_{y}  \end{bmatrix}
    =
    {k}_{0} ({l}_{0} -l)
-   \begin{bmatrix} -cos(\alpha) \\ sin(\alpha) \end{bmatrix}
+   \begin{bmatrix} -cos(\alpha) \\ sin(\alpha) \end{bmatrix},
 \end{equation}
 
 The SLIP model describes running as a series of apex heights \({y}_i \)
@@ -104,7 +107,7 @@ The SLIP model is a conservative system without any friction or other mechanism 
 Therefore, the apex height and forwards speed are coupled through the system energy and the trajectory is fully characterized by the apex height. 
 The transition between two consecutive apex heights is defined by the landing angle \(\alpha\):
 \begin{equation}
-   {f}_{yi+1}={f}_{yi}|(\alpha)
+   {f}_{yi+1}={f}_{yi}|(\alpha),
 \end{equation}
 The landing angle is used to achieve deadbeat stability of the system \cite{Wu2014} \cite{Hutter2010}.
 
@@ -112,97 +115,172 @@ The landing angle is used to achieve deadbeat stability of the system \cite{Wu20
 
 
 \section{Control}
+\label{sec:Control}
+Different control designs were used for the flight and stance phase. 
 
-
-
-
-
-
-
-
-\subsection{Higher order model: ATRIAS}
-
-The ATRIAS robot has lightweight carbon fiber legs. The robots total mass is concentrated mostly in the trunk. The legs are constructed as a four bar structure actuated 
-by two motors through a leaf spring. The leaf springs and the four bar structure of each leg generate spring like forces in the legs. These spring like forces and 
-the fact that the trunk outweigh the legs make the SMM abstraction especially useful for the ATRIAS robot.
-
-\begin{figure}[h]
-   \centering
-   \includegraphics[scale=0.07]{"assets/ATRIAS2.png"}
-   \caption{ATRIAS leg actuation \cite{Grimes2012}}
-   \label{fig_ATRIAS_motion}
-\end{figure}
-
-
-The pair of motors allow changing the orientation and length of the leg (Fig. \ref{fig_ATRIAS_motion}). The motors can generate linear actuator outputting forces \({F}_{i} \) and rotatory torques
- \({\tau}_{i} \).  
-
-\begin{figure}[h]
-   \centering
-   \includegraphics[scale=0.23]{"assets/ATRIAS1.pdf"}
-   \caption{ATRIAS model \cite{Wu2014}}
-   \label{fig_ATRIAS}
-\end{figure}
-
-In contrast to the SMM abstraction, the ATRIAS robot also needs to balance the trunk, generate swing motion in order to move the legs during flight phase and 
-consider slip at the feed dissipating the system energy. The model of the ATRIAS robot is shown in Fig. \ref{fig_ATRIAS}. In vertical direction a GRF is generated
-corresponding to a spring damper system. In horizontal direction a sliding force proportional to the vertical GRF is generated opposing the motion of 
-the robot. The dynamics of the ATRIAS robot can be described by the equation of motion:
+\subsection{Stance control}
+The mechanics of a robotic leg under support conditions are the following:
 \begin{equation}
-   M(q)\ddot{q}+h(q,\dot{x}))=S{\tau}+{J}^TF 
+   M(q)\ddot{q}+b+g+{J}_{s}^{T}+F_{s}=S^{T}+{\tau},
 \end{equation}
-where M is the mass matrix, q is the coordinate vector, h accounts for Coriolis, centrifugal and gravitational forces, the selection matrix S assigns control inputs 
-\({\tau}\) to \(q\). The coordinate vector consists of the global position and orientation of the trunk \(x\), \(y\), \({\theta}\) and the global orientation and 
-length of each leg \({\gamma}_i\), \({l}_i\). The control vector \({\tau}\) consists of motor torques \({\tau}_i\) and linear force \({F}_i\) of each leg \cite{Wu2014} \cite{Grimes2012}.       
 
-\section{Mapping and control design}
-For controlling the ATRIAS robot a few assumptions were applied. Since the mass of the feet is clearly smaller than the mass of the robot, the inertial effects of 
-the feet can be neglected. This assumption does eliminate the dynamics of the leg during flight. The force for swinging the leg during flight is controlled separately 
-and is not part of the paper. Besides that it is assumed that there is no slip during the whole stance phase \cite{Wu2014}.
-
-\subsection{Control Goals}
-Based on the SMM model the leg placement policy \({\alpha}(t)\) provides deadbeat tracking of the robot gait, which is fully determined by the apex height. The ATRIAS 
-robot is able to achieve the same performance when tracking the landing angle and generating GRFs through the center of mass (COM) corresponding to the spring forces 
-in the SMM. To prevent unstable trunk pitch rates, the angular momentum  \(H={I}_{t}\dot{\theta}+{I}_m\dot{\gamma}_{1}{I}_m\dot{\gamma}_{2}\) around the COM should be 
-stabilized at zero in average. This is achieved by keeping the trunk pitch constant 
-at \({\theta}^{*}\) and mirroring the hip angle velocities \(\dot{\gamma}_{1} = -\dot{\gamma}_{2}\). Also, the translational Energy 
-\({E}_{Trans}=\frac{1}{2}m(\dot{x}^{2}+\dot{y}^{2})+mgy\) should match the system energy \({E}^{*}\) that parametrizes the SMM. Since the inertial effects 
-of the feet are ignored \(H\) and \({E}_{Trans}\) can only be regulated during stance. Besides that the robot feet should not be trailed back too far \({\gamma}_{2}=2{\pi}-{\gamma}_{1}\). 
-The average hip angle is therefore \(\frac{{\gamma}_{1}+{\gamma}_{2}}{2}={\pi}\) \cite{Wu2014}.
-\subsection{Flight}
-During flight the COM follows on the calculated trajectory and no external forces are applied on the robot. The control focuses on the angular motions of the 
-trunk, hips and legs and minimizes their error to \({\theta}^{*}\), \({\phi}^{*}\), \({\alpha}^{*}\). An LQR controller is used to find an optimal trade off between these goals \cite{Wu2014}.
-\subsection{Stance}
-During the stance phase the trunk pitch \({\theta}\),  average hip angle \({\phi}\) and translational energy \({E}_{Trans}\) are tracked. The GRFs are calculated from the SMM and also tracked. To achieve the control goals, a cascade control design is used \cite{Wu2014}. 
-\subsubsection{Outer loop}
-Target GRFs are aimed such that they produce work reducing the system energy error between \({E}_{Trans}\) and \({E}^{*}\). Since spring-leg behavior is assumed 
-virtual spring forces are calculated to model the robot's GRFs \cite{Wu2014}.
-\subsubsection{Inner loop}
-Actuator commands are calculated from these virtual spring forces to produce the actual robot GRFs defined in the outer loop. To do so, the virtual spring forces are 
-substituted in the equations of motion to solve for the feed-forward actuation \([{\tau}_{1,ff}, {\tau}_{2,ff}, {F}_{1,ff}]\). These produce the work opposing the estimated 
-energy error from the outer loop. In a feedback loop torques are calculated driving the average hip angle \({\phi}\) and trunk pitch \({\theta}\) towards their stationary references \({\pi}\) and \({\theta}^{*}\).
+with the mass matrix M , the coriolis and centrifugal force vector b , the gravitational force g , the ground contact force
+Fs, the corresponding support Jacobian \({J}_{s}\), the actuation torques \(\tau = [{\tau}_{Hip}, {\tau}_{Knee}]^{T}\) and the actuator selection matrix S
+limiting the actuation to hip and knee joints. The generalized coordinates  \(q = [x_{FloatingBase}, y_{FloatingBase}, {\phi}_{Hip}, {\phi}_{Hip}]^{T}\)
+describe the current robot state. Since we assume no slip between foot and ground during contact. The following conditions apply: 
 \begin{equation}
-   \label{eq:t}
-   \begin{aligned}
-   {\tau}_{2,fb}={K}_{p{\phi}}(2{\pi}{\gamma}_{1}-{\gamma}_{2})-{K}_{d{\phi}}(\dot{{\gamma}_{1}}+\dot{{\gamma}_{2}})\\
-   {\tau}_{1,fb}=-{\tau}_{2,fb}+{K}_{p0}({\theta}_{*}-{\theta}){K}_{d0}(\dot{\theta})
-   \end{aligned}
+   \dot{x}_{s} = J_{s} \dot{q} = 0,
 \end{equation}
-For the motor torques the feed-forward and feedback results are added \({\tau}_{i}={\tau}_{i,ff}+{\tau}_{i,fb}\) and for the leg force just the feedforward actuation is used \({F}_{i}={F}_{i,ff}\) \cite{Wu2014}.
+\begin{equation}
+   \ddot{x}_{s} = J_{s} \ddot{q} + \dot{J}_{s} \dot{q}=0,
+\end{equation}
 
-\section{Results}
+This reduces the mechanics of a robotic leg to a support consistent description:
+\begin{equation}
+   M \ddot{q} + {N}_{s}^{T}(b + g) + {J}_{s}^{T} {\Lambda}_{s} {\dot{J}}_{s} \dot{q} = {(S {N}_{s})}^{T} \tau,
+\end{equation}
+
+with the support inertia Matrix \({\Lambda}_{s} = {({J}_{s} {M}^{-1} {J}_{s}^{T})}^{-1}\) and the support nullspace 
+\({N}{s}=[I-{M}^{-1} {J}_{s}^{T} {\Lambda}_{s} {J}_{s}]\). The real articulated leg has inertia and mass in each leg segment. Therfore it is affected 
+by the impulse of the foot hitting the ground. The change of the generalized velocity is described by the nullspace \({\dot{q}}^{+}={N}_{s} {\dot{q}}^{-}\)
+The stance dynamics can now be projected on the center of gravity (CoG) of the articulated leg. This allows to compute the operational space force F:
+\begin{equation}
+   \Lambda {\ddot{r}}_{CoG} + {\mu}^{*} + {p}^{*} = F, 
+   \label{eq:operational space force F}
+\end{equation}
+The operational space force F do relate to the robot actuation like the following:
+\begin{equation}
+   \tau = {J}^{*T}F,
+\end{equation}
+
+The different terms which are used in \ref{eq:operational space force F} are presented in the follwing:\\* 
+i) task interia: 
+\begin{equation}
+   {\Lambda}^{*} = {(J {M}^{-1} S {N}_{s} {J}^{*})}^{-1}, 
+\end{equation}
+ii) projected coriolis and centrifugal terms
+\begin{equation}
+\begin{aligned}
+   {\mu}^{*} = & \ {\Lambda}^{*} {J}_{CoG} {M}^{-1} {N}_{s}^{T} b - {\Lambda}^{*} {\dot{J}}_{CoG} \dot{q} \\
+   & \ + {\Lambda}^{*} {J}_{CoG} {M}^{-1} {J}_{s}^{T} {\Lambda}_{s} {\dot{J}}_{s} {\dot{q}}_{CoG},\
+\end{aligned}
+\end{equation}
+iii) projected gravitational term
+\begin{equation}
+   {p}^{*} = {\Lambda}^{*} {J}_{CoG} {M}^{-1} {N}_{s}^{T} g,
+\end{equation}
+iv) support reduced Jacobian
+\begin{equation}
+   {J}^{*} = {J}_{CoG} {M}^{-1} {(S {N}_{s})}^{T} {(S {N}_{s} {M}^{-1} {(S {N}_{s})}^{T})}^{-1}
+\end{equation}
+
+After projecting the stance dynamics of the robotic leg onto the CoG, the SLIP dynamics can now also be imposed onto the CoG. Then the equations of motion of the SLIP model 
+in \ref{eq:equation of motion} can be solved for the \(\ddot{x}, \ddot{y}\) which are then be inserted for \({\ddot{r}}_{CoG}\) in \ref{eq:operational space force F}. This 
+enables the SLIP control law:
+\begin{equation}
+   \tau = {J}^{*T} ({\Lambda}^{*} \frac{1}{m} ({F}_{leg} + mg) + {\mu}^{*} + {p}^{*})
+\end{equation}
+If we assume to have an perfect model of the articulated leg and the CoG motion of the SLIP model is feasible, using the SLIP control law the CoG of the articulated leg will 
+follow the SLIP trajectory accuratly. The paragraph follows Hutters work in \cite{Hutter2010}
+
+
+\subsection{Flight control}
+A cascade control is used in the flight phase to track the landing angle \(\alpha\). The cascade control consists of two PI and one PID controller and is shown in Fig \ref{fig:cascade}. 
+The position controller uses the difference of the goal and current position of the CoG to calculate the desired velocity of the CoG. The velocity controller uses 
+the difference of the goal and current velocity of the CoG to calculate the desired angle of attack in the SLIP model. From this angle the goal foot position can be 
+calculated. This foot position is compared with the current foot position of the acrticulated leg and a desired acceleration of the foot is set. From there the torques 
+required to generate these accelerations of the robot foot are estimated. The relation between joint accelerations and end-effector accelerations is given by the 
+Jacobians. To transform the the accelerations in the joints to actuations the mass matrix and Newton's first law is used.
+
 \begin{figure}[h]
    \centering
-   \includegraphics[scale=0.34]{"assets/results.pdf"}
-   \caption{First two seconds of running in flat terrain \cite{Wu2014}}
-   \label{results}
+   \includegraphics[scale=0.11]{"assets/cascade.png"}
+   \caption{Flight control}
+   \label{fig:cascade}
 \end{figure}
 
-Fig. \ref{results} shows the performance of the control design for the ATRIAS robot on flat ground. C and E show that the controller is able to stabilize the trunk pitch 
-\({\theta}\) and the average hip angle \({\phi}\) in two steps. These can still deviate from their goal angle in order to stabilize the angular momentum H. 
-The gait behavior described by the apex height in A and forward velocity in B was achieved by matching the landing condition \({\alpha}^{*}(t)\). 
-When the foot slips (red shaded in G) maximum torque is applied in order to oppose the motion of the foot. When the foot is stationary (gray shaded in G) the applied torques generate GRFs in order to regulate the
- system energy and to drive the angular momentum H towards zero \cite{Wu2014}.
+\section{SLIPic}
+\label{sec:SLIPic}
+For the SLIP model the leg is modeled with a masseless spring. In reality the articulated leg does have a mass and inertia for each segment. The impact when the foot strikes the ground 
+therefor influences the velocity of the articulated leg. Therfore the generalized velocity changes through the impact. Like mentioned earlier this velocity change is described throught 
+the support nullspace. This velocity change leads to a loss of kinetic energy:
+\begin{equation}
+\begin{aligned}
+   \Delta E = & \ 0.5 {m}_{CoG} ({|{\dot{r}}_{CoG}^{-}|}^{2} - {|{\dot{r}}_{CoG}^{+}|}^{2}) \\
+   & \ =0.5 {m}_{CoG} {\dot{q}}^{-T} ({J}_{CoG}^{T} {J}_{CoG} - \\
+   & \ {N}_{s}^{T} {J}_{CoG}^{T} {J}_{CoG} {N}_{s}) {\dot{q}}^{-},
+\end{aligned}
+\end{equation}
+
+The SLIP model does not account for that energy loss. If the normal SLIP model is used for the SLIP 
+control law in the stance phase this energy loss is not compensated. The potential energy is reduced by the loss of kinetic energy in every jump. This leades to a reduced apex height 
+in every foot strike. To prevent that an extended SLIP model is used which considers the loss of kinetic energy through the impact. This model is called SLIP with impact compensation 
+(SLIPic). In this model the spring of the SLIP model is pre-compressed at the landing such that the loss of kinetic energy in the articulated leg equals the energy stored in the spring: 
+
+\begin{equation}
+   \Delta E = 0.5 k {\Delta l}^{2},
+\end{equation}
+
+The spring forces in the SLIP model and thefore also the ground reaction forces (GRF) in the articulated leg are increased such that the energy loss is compensated and the apex height is 
+held constant. Fig \ref{fig:SLIPic} visualizes how the virtual spring energy copnesates the loss of kinetic energy.
+
+\begin{figure}[h]
+   \centering
+   \includegraphics[scale=0.15]{"assets/SLIPic.png"}
+   \caption{impact compensation in SLIPic \cite{Hutter2010}}
+   \label{fig:SLIPic}
+\end{figure}
+
+\section{Structure}
+\label{sec:Structure}
+\subsection{Hybrid Automaton}
+\subsection{Implementation}
+
+\section{Solver}
+\label{sec:Solver}
+The calculate the robots state we iteratively do a control, forward dynamics and integration step. In the control step we calculate the requred robot actuation from 
+the current robot state. For this we use our stance and flight controller described in Section \ref{sec:Control}. In teh forward dynamics the robot state derivative 
+is calculated from the current robot state and the robot actuation. Integrating this robot state derivative returns the robot state for the next time step. The step size 
+of the solver loop determines the accuracy of the solution for the robot state. The step size is derermined by the steps the integrator takes.
+
+
+\begin{figure}[h]
+   \centering
+   \includegraphics[scale=0.12]{"assets/solver_iteration.png"}
+   \caption{Solver iteration}
+   \label{fig:solver_iteration}
+\end{figure}
+
+In each iteration a state transition from stance to flight or flight to stance phase is checked. The jump function uses the solved robot state from this iteration 
+for the discrete state transition. 
+In a first attempt the ivp solver by SciPy is applied. This solver uses the Runge-Kutta method of order 5(4) to numerically integrate a system of ordinary differential 
+equations given an initial value. The robot state derivative i is integrated until the end of the integration interval is reached or an event function is 
+fullfilled.  The guard functions which mark the transition between the discrete states are used as event functions. The ivp solver will find an accurate robot state 
+at time t when the event function is zero. This has the advantage that the robot state is known exactly at the state transition and can be used in the jump function. 
+The ivp solver uses variable step size for each integration step. This variable step size causes unstable behaviour in the system. The PID controller in the 
+flight control numerically differentiates the foot position error. A differentiation with a variable step size might cause problem and makes 
+it hard to tune the PID controller. Fig \ref{fig:ivp solver} shows that after 4 jumps the system becomes unstable.
+
+\begin{figure}[h]
+   \centering
+   \includegraphics[scale=0.11]{"assets/solver_ivp.png"}
+   \caption{ivp solver}
+   \label{fig:ivp solver}
+\end{figure}
+
+In a second attempt the Runge-Kutta method of order 5(4) with a fixed step size is evaluated. This has the disandvatage that no root-finding is used. After each 
+integration step the guard functions are checked to make sure whether a discrete state transition did occur. Compared to the ivp solver the robot state at the 
+transition is not as accurate with this integration method. Choosing a small enough step size makes this problem insignificant. The fixed step size helps a lot 
+to make the flight controller more stable. Fig \ref{fig:RK45 solver} shows the good results with this method.
+
+\begin{figure}[h]
+   \centering
+   \includegraphics[scale=0.074]{"assets/solver_rk45.png"}
+   \caption{RK45 solver}
+   \label{fig:RK45 solver}
+\end{figure}
+
+\section{Conclusion}
 
 \addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
                                   % on the last page of the document manually. It shortens
