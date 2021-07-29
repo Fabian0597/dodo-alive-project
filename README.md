@@ -39,7 +39,7 @@ During flight, the leg length and the landing angle are held constant. For this,
 ### Hybrid automaton
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/hybrid_automoton.png " width="600"/></td>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/hybrid_automaton.png " width="600"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>IMG 2:</b> Hybrid automoton.
