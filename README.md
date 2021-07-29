@@ -8,7 +8,7 @@ In this project a SLIP model was used to control a robotic articulated leg. The 
     <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_RK45.gif " width="700"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> articulated leg with RKF45 integrator.
+    <td style="width: 48%;" valign="top"> <b>GIF 1:</b> Articulated leg with RKF45 integrator.
     </td>
   </tr>
 </table>
@@ -30,14 +30,36 @@ During flight, the leg length and the landing angle are held constant. For this,
     <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="600"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>IMG 1:</b> cascade contol.
+    <td style="width: 48%;" valign="top"> <b>IMG 1:</b> Cascade contol.
     </td>
   </tr>
 </table>
 
 ## Structure
 ### Hybrid automaton
+<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
+  <tr>
+    <td style="width: 48%;"> <img src="own-project/document/ressources/hybrid_automoton.png " width="600"/></td>
+  </tr>
+  <tr>
+    <td style="width: 48%;" valign="top"> <b>IMG 1:</b> Hybrid automoton.
+    </td>
+  </tr>
+</table>
+
 ### Implementation
+An automaton was used to capture the robot state. It contains a continous state (generalized coordinates), which consists of the  coordinates of the floating base in the 3D space, the hip angle and knee angle. It also contains the discrete state, which describes whether the robot is in the flight or stance phase. The transitions between these states are described through events. For each of these two discrete states an own controller class is implemented, which are described above.
+
+<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
+  <tr>
+    <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="600"/></td>
+  </tr>
+  <tr>
+    <td style="width: 48%;" valign="top"> <b>IMG 2:</b> Class diagram.
+    </td>
+  </tr>
+</table>
+
 
 ### Stance control
 When touching the ground, the SLIP dynamics is projected onto the CoG motion of the robotic leg. From there, the required joint actuator torques in order to generate the necessary operational space forces are calculated. We used the paper "Hutter et al. 2010 - SLIP running with an Articulated Robotic Leg" as orientation.
@@ -52,23 +74,11 @@ To calculate the robot's state we iteratively do a control, forward dynamics and
     <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_ivp.gif " width="800"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>GIF 2:</b> articulated leg with ivp_solver.
+    <td style="width: 48%;" valign="top"> <b>GIF 2:</b> Articulated leg with ivp_solver.
     </td>
   </tr>
 </table>
 
-## Structure
-An automaton was used to capture the robot state. It contains a continous state (generalized coordinates), which consists of the  coordinates of the floating base in the 3D space, the hip angle and knee angle. It also contains the discrete state, which describes whether the robot is in the flight or stance phase. The transitions between these states are described through events. For each of these two discrete states an own controller class is implemented, which are described above.
-
-<table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
-  <tr>
-    <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="600"/></td>
-  </tr>
-  <tr>
-    <td style="width: 48%;" valign="top"> <b>IMG 2:</b> articulated leg with RKF45 integrator.
-    </td>
-  </tr>
-</table>
 
 ## Setup the Project
 
