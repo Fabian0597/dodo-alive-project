@@ -35,6 +35,10 @@ During flight, the leg length and the landing angle are held constant. For this,
   </tr>
 </table>
 
+## Structure
+### Hybrid automaton
+### Implementation
+
 ### Stance control
 When touching the ground, the SLIP dynamics is projected onto the CoG motion of the robotic leg. From there, the required joint actuator torques in order to generate the necessary operational space forces are calculated. We used the paper "Hutter et al. 2010 - SLIP running with an Articulated Robotic Leg" as orientation.
 
