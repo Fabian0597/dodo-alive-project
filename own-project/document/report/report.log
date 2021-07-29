@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.2.22)  29 JUL 2021 15:29
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.2.22)  29 JUL 2021 15:56
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -328,9 +328,7 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[4
-
- </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_ivp.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_rk45.png>] (/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.aux) ) 
+[4 </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_ivp.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_rk45.png>] (/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.aux) ) 
 Here is how much of TeX's memory you used:
  3344 strings out of 481239
  50716 string characters out of 5920377
@@ -340,7 +338,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  30i,10n,31p,338b,232s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on /home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf (4 pages, 2215891 bytes).
+Output written on /home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf (4 pages, 2217059 bytes).
 PDF statistics:
  77 PDF objects out of 1000 (max. 8388607)
  44 compressed objects within 1 object stream

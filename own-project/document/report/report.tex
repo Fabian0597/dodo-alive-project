@@ -296,7 +296,17 @@ a lot to make the flight controller more stable. Fig \ref{fig:RK45 solver} shows
    \label{fig:RK45 solver}
 \end{figure}
 
+\section{Summary}
+The very low level SLIP model was implemented sucessfully to control the high level robotic leg. To keep a constant apex 
+height through all foot strikes, the extended SLIP model SLIPic was used in this project. The flight control caused some problems in the beginning but was solved by using a 
+solver with fixed step size. The project was implemented in a very modular, generic and extensible way, such that future projects can use this implementation to 
+develop a more sophisticated control structure or to extend the articulated leg to a more complex one.
+
 \section{Conclusion}
+Overall, the control of the articulated leg works good. It was a challenge to detect the robot state exactly at the discrete state transition with the RK45 solver.
+In the future, this issue could be improved by either using a solver which finds the exact state transition event or using a control structure which does not 
+separate between flight and stance phase. A controller which controls the articulated leg in the stance and the flight phase would be more elegant. 
+Extending the articulated leg to an even more realistic one or including a second leg or an upper body would also be a great future project.
 
 
 \addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
