@@ -42,7 +42,7 @@ During flight, the leg length and the landing angle are held constant. For this,
     <td style="width: 48%;"> <img src="own-project/document/ressources/hybrid_automoton.png " width="600"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>IMG 1:</b> Hybrid automoton.
+    <td style="width: 48%;" valign="top"> <b>IMG 2:</b> Hybrid automoton.
     </td>
   </tr>
 </table>
@@ -55,7 +55,7 @@ An automaton was used to capture the robot state. It contains a continous state 
     <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="600"/></td>
   </tr>
   <tr>
-    <td style="width: 48%;" valign="top"> <b>IMG 2:</b> Class diagram.
+    <td style="width: 48%;" valign="top"> <b>IMG 3:</b> Class diagram.
     </td>
   </tr>
 </table>
