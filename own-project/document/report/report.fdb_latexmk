@@ -1,16 +1,16 @@
 # Fdb version 3
-["bibtex report"] 1627405059 "report.aux" "report.bbl" "report" 1627405577
+["bibtex report"] 1627565348 "report.aux" "report.bbl" "report" 1627565350
   "/usr/share/texlive/texmf-dist/bibtex/bib/IEEEtran/IEEEabrv.bib" 1440712899 20898 a5d2167c380db7dfff810b085c77ed63 ""
   "/usr/share/texlive/texmf-dist/bibtex/bst/IEEEtran/IEEEtran.bst" 1440712899 57748 7c8250ecf02814ce6ddc0cdbb63df1dd ""
-  "report.aux" 1627405576 2701 c5e02d1475d02f930cbe5fbbdcaa2621 "pdflatex"
+  "report.aux" 1627565350 3066 1ec89eae7a0da106ee9014345b612195 "pdflatex"
   "report.bib" 1623010320 976 90665e65663bfd7cef6bd2a1ebcf6e35 ""
   (generated)
   "report.bbl"
   "report.blg"
-["pdflatex"] 1627405575 "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.tex" "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf" "report" 1627405577
+["pdflatex"] 1627565348 "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.tex" "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf" "report" 1627565350
   "/etc/texmf/web2c/texmf.cnf" 1614031075 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.aux" 1627405576 2701 c5e02d1475d02f930cbe5fbbdcaa2621 ""
-  "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.tex" 1627405574 16968 f40e5f4dca08f8202d5fb99d04485f16 ""
+  "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.aux" 1627565350 3066 1ec89eae7a0da106ee9014345b612195 ""
+  "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.tex" 1627565345 17490 3f24fff82c313f110a0dee5f54db95a2 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/adobe/times/ptmb7t.tfm" 1136768653 2172 fd0c924230362ff848a33632ed45dc23 ""
@@ -81,15 +81,17 @@
   "assets/SLIPic.png" 1627395425 262028 0c7f5a2666a2713f0d3c3ee2b0db69ab ""
   "assets/SMM2.pdf" 1623313650 58259 ec222a0eec531f42428d1695314fc568 ""
   "assets/cascade.png" 1627405566 85734 9d46ffc0fd6d2bc4dcf0a3174e9dc119 ""
+  "assets/class_structure.png" 1627206422 237182 67d7534478e8abb80f0c1d57e280a264 ""
+  "assets/hybrid_automaton.png" 1627565163 135373 d19e735036917fa06a38041ac39e79b1 ""
   "assets/solver_iteration.png" 1627402125 103228 ec946a7a07c040b21ebf603dbc434f94 ""
   "assets/solver_ivp.png" 1627404354 352425 e25fed1a49bcacc28f75c8b84959a482 ""
   "assets/solver_rk45.png" 1627404379 1059326 bd84d334991d1c462368f6aa833e1141 ""
-  "report.aux" 1627405576 2701 c5e02d1475d02f930cbe5fbbdcaa2621 "pdflatex"
-  "report.bbl" 1627405059 1467 8b98bf86dd8c48a0ec2490d05512a111 "bibtex report"
-  "report.tex" 1627405574 16968 f40e5f4dca08f8202d5fb99d04485f16 ""
+  "report.aux" 1627565350 3066 1ec89eae7a0da106ee9014345b612195 "pdflatex"
+  "report.bbl" 1627565348 1467 8b98bf86dd8c48a0ec2490d05512a111 "bibtex report"
+  "report.tex" 1627565345 17490 3f24fff82c313f110a0dee5f54db95a2 ""
   (generated)
-  "report.aux"
-  "report.log"
+  "report.pdf"
   "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf"
   "/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.log"
-  "report.pdf"
+  "report.log"
+  "report.aux"

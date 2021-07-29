@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.2.22)  27 JUL 2021 19:06
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.2.22)  29 JUL 2021 15:29
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -236,11 +236,11 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 48
  (/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-LaTeX Font Info:    Trying to load font information for U+msa on input line 73.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 72.
  (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 73.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 72.
  (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
@@ -249,7 +249,7 @@ pdfTeX warning: pdflatex (file /home/fabian/Documents/TUM/DODO/dodo-alive-projec
 <assets/SMM2.pdf, id=1, 791.95876pt x 444.15938pt>
 File: assets/SMM2.pdf Graphic file (type pdf)
 <use assets/SMM2.pdf>
-Package pdftex.def Info: assets/SMM2.pdf  used on input line 99.
+Package pdftex.def Info: assets/SMM2.pdf  used on input line 98.
 (pdftex.def)             Requested size: 158.38895pt x 88.83029pt.
 [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}
 
@@ -258,10 +258,10 @@ Package pdftex.def Info: assets/SMM2.pdf  used on input line 99.
 <assets/cascade.png, id=19, 2511.3825pt x 760.8425pt>
 File: assets/cascade.png Graphic file (type png)
 <use assets/cascade.png>
-Package pdftex.def Info: assets/cascade.png  used on input line 197.
+Package pdftex.def Info: assets/cascade.png  used on input line 198.
 (pdftex.def)             Requested size: 276.25293pt x 83.69293pt.
 
-Overfull \hbox (24.25293pt too wide) in paragraph at lines 197--198
+Overfull \hbox (24.25293pt too wide) in paragraph at lines 198--199
  [][] 
  []
 
@@ -269,32 +269,54 @@ Overfull \hbox (24.25293pt too wide) in paragraph at lines 197--198
 <assets/SLIPic.png, id=26, 1298.8525pt x 738.76pt>
 File: assets/SLIPic.png Graphic file (type png)
 <use assets/SLIPic.png>
-Package pdftex.def Info: assets/SLIPic.png  used on input line 229.
+Package pdftex.def Info: assets/SLIPic.png  used on input line 230.
 (pdftex.def)             Requested size: 194.81946pt x 110.8092pt.
-<assets/solver_iteration.png, id=27, 2150.0325pt x 1001.7425pt>
-File: assets/solver_iteration.png Graphic file (type png)
-<use assets/solver_iteration.png>
-Package pdftex.def Info: assets/solver_iteration.png  used on input line 249.
-(pdftex.def)             Requested size: 257.99277pt x 120.2039pt.
+<assets/hybrid_automaton.png, id=27, 1483.5425pt x 919.435pt>
+File: assets/hybrid_automaton.png Graphic file (type png)
+<use assets/hybrid_automaton.png>
+Package pdftex.def Info: assets/hybrid_automaton.png  used on input line 241.
+(pdftex.def)             Requested size: 252.19888pt x 156.30188pt.
+<assets/class_structure.png, id=28, 1525.7pt x 1035.87pt>
+File: assets/class_structure.png Graphic file (type png)
+<use assets/class_structure.png>
+Package pdftex.def Info: assets/class_structure.png  used on input line 250.
+(pdftex.def)             Requested size: 259.36557pt x 176.09557pt.
 
-Overfull \hbox (5.99277pt too wide) in paragraph at lines 249--250
+Overfull \hbox (7.36557pt too wide) in paragraph at lines 250--251
  [][] 
  []
 
-<assets/solver_ivp.png, id=28, 2222.3025pt x 1664.2175pt>
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<assets/solver_iteration.png, id=29, 2150.0325pt x 1001.7425pt>
+File: assets/solver_iteration.png Graphic file (type png)
+<use assets/solver_iteration.png>
+Package pdftex.def Info: assets/solver_iteration.png  used on input line 265.
+(pdftex.def)             Requested size: 257.99277pt x 120.2039pt.
+
+Overfull \hbox (5.99277pt too wide) in paragraph at lines 265--266
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<assets/solver_ivp.png, id=30, 2222.3025pt x 1664.2175pt>
 File: assets/solver_ivp.png Graphic file (type png)
 <use assets/solver_ivp.png>
-Package pdftex.def Info: assets/solver_ivp.png  used on input line 266.
+Package pdftex.def Info: assets/solver_ivp.png  used on input line 282.
 (pdftex.def)             Requested size: 244.45403pt x 183.06448pt.
-<assets/solver_rk45.png, id=29, 3366.5775pt x 1523.6925pt>
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[3 </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/SLIPic.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/hybrid_automaton.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/class_structure.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_iteration.png>]
+<assets/solver_rk45.png, id=38, 3366.5775pt x 1523.6925pt>
 File: assets/solver_rk45.png Graphic file (type png)
 <use assets/solver_rk45.png>
-Package pdftex.def Info: assets/solver_rk45.png  used on input line 278.
+Package pdftex.def Info: assets/solver_rk45.png  used on input line 294.
 (pdftex.def)             Requested size: 249.14339pt x 112.76077pt.
-(/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.bbl
-Underfull \vbox (badness 2253) has occurred while \output is active []
-
- [3 </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/SLIPic.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_iteration.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_ivp.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_rk45.png>])
+ (/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.bbl)
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -308,20 +330,20 @@ Before submitting the final camera ready copy, remember to:
 
 [4
 
-] (/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.aux) ) 
+ </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_ivp.png> </home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/assets/solver_rk45.png>] (/home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.aux) ) 
 Here is how much of TeX's memory you used:
- 3327 strings out of 481239
- 50237 string characters out of 5920377
- 293111 words of memory out of 5000000
- 18567 multiletter control sequences out of 15000+600000
+ 3344 strings out of 481239
+ 50716 string characters out of 5920377
+ 293135 words of memory out of 5000000
+ 18582 multiletter control sequences out of 15000+600000
  565123 words of font info for 88 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  30i,10n,31p,338b,232s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on /home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf (4 pages, 1890798 bytes).
+Output written on /home/fabian/Documents/TUM/DODO/dodo-alive-project/own-project/document/report/report.pdf (4 pages, 2215891 bytes).
 PDF statistics:
- 73 PDF objects out of 1000 (max. 8388607)
+ 77 PDF objects out of 1000 (max. 8388607)
  44 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 31 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 41 words of extra memory for PDF output out of 10000 (max. 10000000)
 
