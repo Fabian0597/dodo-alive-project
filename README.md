@@ -5,7 +5,7 @@ In this project a SLIP model was used to control a robotic articulated leg. The 
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_RK45.gif " width="700"/></td>
+    <td style="width: 48%;"> <img src="documentation/ressources/jumping_RK45.gif " width="700"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>GIF 1:</b> Articulated leg with RKF45 integrator.
@@ -27,7 +27,7 @@ During flight, the leg length and the landing angle are held constant. For this,
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/cascade_control.png " width="600"/></td>
+    <td style="width: 48%;"> <img src="documentation/ressources/cascade_control.png " width="600"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>IMG 1:</b> Cascade contol.
@@ -41,7 +41,7 @@ To simulate the motion of the robot leg, we model both discrete and continuous s
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/hybrid_automaton.png " width="400"/></td>
+    <td style="width: 48%;"> <img src="documentation/ressources/hybrid_automaton.png " width="400"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>IMG 2:</b> Hybrid automoton.
@@ -54,7 +54,7 @@ An automaton was used to capture the robot state. It contains a continous state 
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 24%;"> <img src="own-project/document/ressources/class_structure.png " width="600"/></td>
+    <td style="width: 24%;"> <img src="documentation/ressources/class_structure.png " width="600"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>IMG 3:</b> Class diagram.
@@ -73,7 +73,7 @@ To calculate the robot's state we iteratively do a control, forward dynamics and
 
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
-    <td style="width: 48%;"> <img src="own-project/document/ressources/jumping_ivp.gif " width="800"/></td>
+    <td style="width: 48%;"> <img src="documentation/ressources/jumping_ivp.gif " width="800"/></td>
   </tr>
   <tr>
     <td style="width: 48%;" valign="top"> <b>GIF 2:</b> Articulated leg with ivp_solver.
@@ -168,7 +168,7 @@ export PYTHONPATH=$PYTHONPATH:~/rbdl-tum/build/python
 
 Run the motion simulation:
 ```
-/usr/bin/python3.8 /home/appuser/git/own-project/run_articulated_leg_walker.py
+python3.8 ./code/run_articulated_leg_walker.py
 ```
 
 Show the result:
