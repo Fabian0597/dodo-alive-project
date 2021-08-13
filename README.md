@@ -173,7 +173,7 @@ python3.8 ./code/run_articulated_leg_walker.py
 
 Show the result:
 ```
-meshup model/articulatedLeg.lua animation.csv
+meshup ./code/model/articulatedLeg.lua ./code/animation.csv
 ```
 
 
