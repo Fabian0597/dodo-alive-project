@@ -1,6 +1,0 @@
-#folder
-*.swp
-*.swo
-!output/.gitignore
-#!build/start.sh
-build/
