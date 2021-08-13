@@ -37,6 +37,8 @@ During flight, the leg length and the landing angle are held constant. For this,
 
 ## Structure
 ### Hybrid automaton
+To simulate the motion of the robot leg, we model both discrete and continuous states. Therefore we use a hybrid automaton. This is an extension of a finite state machine and additionally handles continuous states. The following figure shows a schematic visualization of the hybrid automaton. To illustrate the concept, the continuous state space is shown qualitatively in a low-dimensional representation. Starting from an initial state, which includes the position and joint angles of the robot leg, the system is solved by the corresponding differential equation (flow function) of the current phase in small time steps. The guard functions detect the discrete state change from flight to stance and vice versa. If such a state change is detected, the jump function is executed and the subsequent state is simulated.
+
 <table style="margin-left: auto; margin-right: auto; table-layout: fixed; width: 100%">
   <tr>
     <td style="width: 48%;"> <img src="own-project/document/ressources/hybrid_automaton.png " width="400"/></td>
