@@ -57,11 +57,11 @@ and uses a feedback controller to adapt to perturbations. In our project the rob
 A continuous state captures the position of the robot in the 3D space, as well as the angle in hip and knee. A discrete state describes whether the robot is 
 in the flight to stance phase. A control structure is implemented separately for those two discrete phases. 
 For the flight phase, a cascade control consisting of PI and PID controller is used which tracks the landing angle alpha. When touching the ground, the SLIP dynamics 
-can be projected onto the CoG motion of the robotic leg. From there, the joint actuator torques are calculated with the SLIP control law. The articulated robotic leg 
+can be projected onto the center of gravity (CoG) motion of the robotic leg. From there, the joint actuator torques are calculated with the SLIP control law. The articulated robotic leg 
 differs from the simplified SLIP model because the mass and inertia of each leg segment influences the robot's motion. This is the reason why the articulated 
 leg is influenced by the impact at touchdown. This leads to a velocity change and therefore a loss of kinetic energy. To incorporate that into the SLIP model, an extended 
 version SLIPic with impact compensation is used. Different types of solvers are implemented in order to study their effect on the controller stability. 
-The project is implemented in Python. The RBDL library is used, which offers efficient rigid body dynamics algorithms. To articulated leg is visualized with Meshup, 
+The project is implemented in Python. The RBDL library is used, which offers efficient rigid body dynamics algorithms. The articulated leg is visualized with Meshup, 
 a tool which was developed with RBDL.
 
 
@@ -101,7 +101,7 @@ The SLIP model describes running as a series of apex heights \({y}_i \)
 \end{figure}
 
 
-In Fig. \ref{fig_SLIP_phase} it becomes clear how the robot trajectory can be separated in flight and stance phases. The gait behavior is characterized by the forward speed and the apex height.
+In Fig \ref{fig_SLIP_phase} it becomes clear how the robot trajectory can be separated in flight and stance phases. The gait behavior is characterized by the forward speed and the apex height.
 The SLIP model is a conservative system without any friction or other mechanism to dissipate the dynamics, and thus, the phase space does not shrink over time. 
 Therefore, the apex height and forwards speed are coupled through the system energy and the trajectory is fully characterized by the apex height. 
 The transition between two consecutive apex heights is defined by the landing angle \(\alpha\):
@@ -124,8 +124,8 @@ The mechanics of a robotic leg under support conditions is the following:
 \end{equation}
 
 with the mass matrix M , the coriolis and centrifugal force vector b , the gravitational force g , the ground contact force
-Fs, the corresponding support Jacobian \({J}_{s}\), the actuation torques \(\tau = [{\tau}_{Hip}, {\tau}_{Knee}]^{T}\) and the actuator selection matrix S
-limiting the actuation to hip and knee joints. The generalized coordinates  \(q = [x_{MainBody}, y_{MainBody}, {\phi}_{Hip}, {\phi}_{Hip}]^{T}\)
+$F_s$, the corresponding support Jacobian \({J}_{s}\), the actuation torques \(\tau = [{\tau}_{Hip}, {\tau}_{Knee}]^{T}\) and the actuator selection matrix S
+limiting the actuation to hip and knee joints. The generalized coordinates  \(q = [x_{MainBody}, y_{MainBody}, {\phi}_{Hip}, {\phi}_{Knee}]^{T}\)
 describe the current robot state. Since we assume no slip between foot and ground during contact. The following conditions apply: 
 \begin{equation}
    \dot{x}_{s} = J_{s} \dot{q} = 0,
@@ -222,7 +222,7 @@ in every foot strike. To prevent that an extended SLIP model is used which consi
    \Delta E = 0.5 k {\Delta l}^{2},
 \end{equation}
 
-The spring forces in the SLIP model and thefore also the ground reaction forces (GRF) in the articulated leg are increased such that the energy loss is compensated and the apex height is 
+The spring forces in the SLIP model and therefore also the ground reaction forces (GRF) in the articulated leg are increased such that the energy loss is compensated and the apex height is 
 held constant. Fig \ref{fig:SLIPic} visualizes how the virtual spring energy compensates the loss of kinetic energy.
 
 \begin{figure}[h]
@@ -236,14 +236,24 @@ held constant. Fig \ref{fig:SLIPic} visualizes how the virtual spring energy com
 \label{sec:Structure}
 \subsection{Hybrid Automaton}
 
+As mentioned before, the state of the robot leg is described by four continuous values, where two degrees of freedom are used for the position and two more for the leg joints. However, the overall state of the phases, flight and stance, is represented as a discrete state. Since we model both discrete and continuous states, we use a hybrid automaton to simulate the motion of the robot leg. A hybrid automaton is an extended form of a finite state automaton and is formally defined as a tuple:
+
+$$ HA = (Z, X, U, Y, U_c, Y_c, T, inv, g, h, f, z_0, x_0) $$ 
+
+The variable $Z$ is the set of discrete states, which in our case corresponds to the two states for the flight and stance phases. The continuous state space $X$, on the other hand, defines the state of the robot leg given by the four degrees of freedom, the floating base and the joints. $z_0$ and $x_0$ are the initial values for these states. $U$, $Y$, $U_c$ and $Y_c$ are the sets of input and output symbols that we do not use for the simulation. The set of transitions is denoted by $T$ and in our case is the discrete change of state from flight to stance phase, the landing event, and  from stance to flight, the jumping event. The invariant function $inv$, the guard function $g$, the jump function $h$ and the flow function $f$ are used to model the behavior of the continuous state. The invariant is a function that assigns the corresponding continuous subspace to each discrete state.  The guard functions represent the transitions in the continuous state space, such that the guard function assigns subspaces from $X$ to the transitions and separates the subspaces of the invariant functions. The flow function is the differential equation describing the dynamics of the overall system for each discrete state. The jump function is applied to the continuous state when a transition of discrete states occurs. Thus, a jump function exits for each transition.
+
 \begin{figure}[h]
-   \centering
-   \includegraphics[scale=0.17]{"assets/hybrid_automaton.png"}
-   \caption{Hybrid automaton}
-   \label{fig:hybrid_automaton}
+	\centering
+	\includegraphics[scale=0.17]{"assets/hybrid_automaton.png"}
+	\caption{Hybrid automaton}
+	\label{fig:hybrid_automaton}
 \end{figure}
 
+The Fig \ref{fig:hybrid_automaton} shows a schematic visualization of the hybrid automaton. To illustrate the concept of a hybrid automaton, the continuous state space is shown qualitatively in a low dimensional representation. The continuous state space for the robot leg actually consists of four or, with derivatives, eight dimensions, which are reduced to two dimensions here. The simulation starts with the initial states. In this case, these are the discrete flight state and the continuous state, shown as a red point. The invariant function defines the rectangular subspaces for flight and stance state. We can now solve the differential equation (flow function) for small time steps and the continuous state is simulated over time, shown as a red line. At the boundary of the flight region, the state enters the landing guard function, which induces the discrete state transition. This executes the corresponding jump function which maps the continuous end state of the flight phase to the state for the stance phase. On landing, the foot hits the ground and loses kinetic energy due to an inelastic impulse. This energy dissipation is modeled using this jump function. Analogously, there is a guard function for the jumping event, green region. However, no energy is lost in this transition.
+
+
 \subsection{Implementation}
+Using the theoretical structure of a hybrid automaton, we model our simulation software for the robot leg. We wrote the Python program in a object-oriented programming manner. The main classes can be see in Fig \ref{fig:class_diagram}. The central class is the hybrid automaton itself, which stores the current discrete and continuous state of the system and uses a solver to simulate the dynamics by integrating the differential equation in small steps. Since we used different solver implementation, we decoupled the different approaches through an interface so that even more implementations can be easily added and used in the project environment. For each discrete state, there is a separate class that implements the flow function, the dynamics of the system, which consists of a controller part and the forward dynamics of the robot leg. Since only the controller iteration of the flow function differs between the states, we use an abstract class that implements both the flow and the forward dynamics of the system. Only the controller is then designed to be state-specific. In the flight phase, we use multiple PID controllers, so it was helpful to add an separate class for this functionality.
 
 \begin{figure}[h]
    \centering
