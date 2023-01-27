@@ -1,4 +1,4 @@
-# Dodo Alive Project
+# Master Project
 
 ## Introduction
 In this project a SLIP model was used to control a robotic articulated leg. The articulated leg is simulated as a LUA model. The RBDL library, which offers efficient rigid body dynamics algorithms is used. The articulated leg is visualized with MeshUp, a tool that was developed with RBDL. Feel free to read our detailed report in the repository.
